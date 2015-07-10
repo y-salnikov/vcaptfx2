@@ -37,6 +37,9 @@
 #define CMD_START_FLAGS_CLK_30MHZ	(0 << CMD_START_FLAGS_CLK_SRC_POS)
 #define CMD_START_FLAGS_CLK_48MHZ	(1 << CMD_START_FLAGS_CLK_SRC_POS)
 
+#define CMD_START_FLAGS_INV_CLK_POS 0
+#define CMD_START_FLAGS_INV_CLK (1 << CMD_START_FLAGS_INV_CLK_POS)
+
 struct version_info {
 	uint8_t major;
 	uint8_t minor;

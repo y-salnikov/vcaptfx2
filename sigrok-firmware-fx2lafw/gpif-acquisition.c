@@ -109,9 +109,9 @@ void gpif_init_la(void)
 {
 	/*
 	 * Setup the FX2 in GPIF master mode, using the external clock
-	 * (inverted), and using async sampling.
+	 * (not inverted), and using async sampling.
 	 */
-	IFCONFIG = 0x5e; //0xee
+	IFCONFIG = 0x4e; //0xee
 
 	/* Abort currently executing GPIF waveform (if any). */
 	GPIFABORT = 0xff;
@@ -206,27 +206,15 @@ bool gpif_acquisition_start(const struct cmd_start_acquisition *cmd)
 	SYNCDELAY();
 
 	/* Set IFCONFIG to the correct clock source. */
-//	if (cmd->flags & CMD_START_FLAGS_CLK_48MHZ) {
-//		IFCONFIG = bmIFCLKSRC | bm3048MHZ | bmIFCLKOE | bmASYNC |
-//			   bmGSTATE | bmIFGPIF;
-//	} else {
-//		IFCONFIG = bmIFCLKSRC | bmIFCLKOE | bmASYNC |
-//			   bmGSTATE | bmIFGPIF;
-//	}
-
+	if (cmd->flags & CMD_START_FLAGS_INV_CLK) {
+		IFCONFIG = 0x5e;
+	}
 	/* Populate delay states. */
-//	if ((cmd->sample_delay_h == 0 && cmd->sample_delay_l == 0) ||
-//	    cmd->sample_delay_h >= 6)
-//		return false;
-
-//	for (i = 0; i < cmd->sample_delay_h; i++)
 		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
 		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
 		
-//	if (cmd->sample_delay_l != 0)
-//		gpif_make_delay_state(pSTATE++, cmd->sample_delay_l);
 
-	/* Populate S1 - the decision point. */
+	/* Populate S2 - the decision point. */
 	gpid_make_data_dp_state(pSTATE++);
 
 	/* Execute the whole GPIF waveform once. */

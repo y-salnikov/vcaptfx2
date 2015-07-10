@@ -290,7 +290,7 @@ void usb_send_start_cmd(void)
 	int rv;
 	struct cmd_start_acquisition cmd=
 	{
-		.flags=CMD_START_FLAGS_SAMPLE_8BIT,
+		.flags=CMD_START_FLAGS_SAMPLE_8BIT | CMD_START_FLAGS_INV_CLK,
 		.sample_delay_h=0,
 		.sample_delay_l=0
 	};
