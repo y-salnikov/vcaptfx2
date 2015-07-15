@@ -1,8 +1,6 @@
-extern uint32_t w_width;
-extern uint32_t w_height;
-extern float ratio;
-extern uint32_t t_width;
-extern uint32_t t_height;
+
+#define t_width 1024
+#define t_height 1024
 
 #define BK_X0 0.115
 #define BK_Y0 0.035

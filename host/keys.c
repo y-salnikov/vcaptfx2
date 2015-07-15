@@ -51,18 +51,10 @@ char esc_pressed (void)
 		  return 0;
 	  }
 	  else scl=0;
-	  //   return event.key.keysym.sym;
+
 	}
 	if (event.type == SDL_VIDEORESIZE)
 	{
-		/* handle resize event */
-//    		surface = SDL_SetVideoMode( event.resize.w,event.resize.h, 0, videoFlags );
-//   		if ( !surface )
-//		{
-//   			fprintf( stderr, "Could not get a surface af
-//    			Quit( 1 );
-//		}
-//    		resize_callback( event.resize.w, event.resize.h );
 		resize_w=event.resize.w;
 		resize_h=event.resize.h;
 		resize_flag++;

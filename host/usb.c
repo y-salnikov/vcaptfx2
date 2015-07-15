@@ -10,6 +10,7 @@
 #include "libusb.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <time.h>
 #include "command.h"
 #include "usb.h"
@@ -20,9 +21,9 @@ extern uint8_t stop;
 struct libusb_config_descriptor *conf;
 libusb_device_handle *device_h;
 libusb_device *device;
-
+uint8_t active_transfers=0;
 unsigned char ep2in;
-unsigned char ep0;
+
 
 
 
@@ -46,10 +47,10 @@ int WriteRAM(size_t addr,const unsigned char *data, size_t nbytes)
 		dl_addr=addr+(d-data);
 		rv=libusb_control_transfer(device_h,0x40,0xa0,
 			/*addr=*/dl_addr,0,
-			/*buf=*/(char*)d,/*size=*/bs,
+			/*buf=*/(unsigned char*)d,/*size=*/bs,
 			/*timeout=*/1000/*msec*/);
 		if(rv<0)
-		{  fprintf(stderr,"Error: Writing %lu bytes at 0x%X\n",bs,dl_addr);  ++n_errors;  }
+		{  fprintf(stderr,"Error: Writing %lu bytes at 0x%X\n",bs,(unsigned int)dl_addr);  ++n_errors;  }
 		d+=bs;
 	}
 	return(n_errors);
@@ -72,10 +73,10 @@ int ReadRAM(size_t addr,const unsigned char *data, size_t nbytes)
 		rd_addr=addr+(d-data);
 		rv=libusb_control_transfer(device_h,0xc0,0xa0,
 			/*addr=*/rd_addr,0,
-			/*buf=*/(char*)d,/*size=*/bs,
+			/*buf=*/(unsigned char*)d,/*size=*/bs,
 			/*timeout=*/1000/*msec*/);
 		if(rv<0)
-		{  fprintf(stderr,"Error: Reading %lu bytes at 0x%X\n",bs,rd_addr);  ++n_errors;  }
+		{  fprintf(stderr,"Error: Reading %lu bytes at 0x%X\n",bs,(unsigned int)rd_addr);  ++n_errors;  }
 		d+=bs;
 	}
 	return(n_errors);
@@ -159,9 +160,8 @@ int ProgramIHexLine(const char *buf,	const char *path,int line)
 
 int usb_init(void)
 {
-	int found=0;
+
 	int err,line;
-	uint8_t b;
 	const char *s;
 	char **ss;
 	if (libusb_init(NULL))
@@ -177,7 +177,7 @@ int usb_init(void)
 	}
 	else 
 	{
-	    found=1;
+
 	    err=libusb_set_configuration(device_h,1);
 	    if(err)
 	    {
@@ -223,7 +223,12 @@ int usb_init(void)
 		}
 		libusb_close(device_h);
 		libusb_exit(NULL);
-		sleep(3);
+		usleep(500000); //wait 3 sec for renumeration
+		usleep(500000);
+		usleep(500000);
+		usleep(500000);
+		usleep(500000);
+		usleep(500000);
 
 	}
 	if (libusb_init(NULL))
@@ -296,7 +301,7 @@ void usb_send_start_cmd(void)
 	};
 	rv=libusb_control_transfer(device_h,0x40,CMD_START,
 			/*addr=*/0,0,
-			/*buf=*/(char*)&cmd,/*size=*/3,
+			/*buf=*/(unsigned char*)&cmd,/*size=*/3,
 			/*timeout=*/1000/*msec*/);
 if(rv<0)
 	fprintf(stderr,"Vendor request error\n");
@@ -316,7 +321,7 @@ void usb_test(void)
 	
 	rv=libusb_control_transfer(device_h,0xc0,CMD_GET_FW_VERSION,
 			/*addr=*/0,0,
-			/*buf=*/(char*)&ver,/*size=*/2,
+			/*buf=*/(unsigned char*)&ver,/*size=*/2,
 			/*timeout=*/1000/*msec*/);
 if(rv<0)
 	{
@@ -327,13 +332,13 @@ if(rv<0)
 	buf=malloc(N);
 	usb_send_start_cmd();
 
-	rv=libusb_bulk_transfer(device_h,ep2in,(char *)buf,N,&transfered,1000);
+	rv=libusb_bulk_transfer(device_h,ep2in,(unsigned char *)buf,N,&transfered,1000);
 	if(rv<0)
 	{
 	    fprintf(stderr,"Bulk transfer error\n");
 	    return;
 	}
-	printf("transfered %lu bytes\n", transfered);
+	printf("transfered %d bytes\n", transfered);
 	f=fopen("/tmp/usb_log.dat","w");
 	for(i=0;i<transfered;i++)
 	{
@@ -344,7 +349,7 @@ if(rv<0)
 }
 
 
-int usb_start_transfer (void) 
+void usb_start_transfer (void) 
 {
     uint8_t i;
     uint8_t *usb_buf;
@@ -353,17 +358,18 @@ int usb_start_transfer (void)
     usb_send_start_cmd();
     for(i=0;i<N_OF_TRANSFERS;i++)
     {
-	usb_buf=malloc(USB_BUF_SIZE);
-	xfr = libusb_alloc_transfer(0);
-	libusb_fill_bulk_transfer(xfr, device_h, ep2in, usb_buf, USB_BUF_SIZE, callbackUSBTransferComplete, NULL, 1000 );
-    
-	if(libusb_submit_transfer(xfr) < 0)
-	{
-	    // Error
-	    libusb_free_transfer(xfr);
-	    free(usb_buf);
-	    fprintf(stderr,"USB submit transfer %d error\n",i);
-	}
+		usb_buf=malloc(USB_BUF_SIZE);
+		xfr = libusb_alloc_transfer(0);
+		libusb_fill_bulk_transfer(xfr, device_h, ep2in, usb_buf, USB_BUF_SIZE, callbackUSBTransferComplete, NULL, 1000 );
+	    
+		if(libusb_submit_transfer(xfr) < 0)
+		{
+		    // Error
+		    libusb_free_transfer(xfr);
+		    free(usb_buf);
+		    fprintf(stderr,"USB submit transfer %d error\n",i);
+		}
+		else active_transfers++;
     }
     
     
@@ -371,6 +377,7 @@ int usb_start_transfer (void)
 
 void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 {
+	uint8_t err=0;
     switch(xfr->status)
     {
         case LIBUSB_TRANSFER_COMPLETED:
@@ -381,42 +388,49 @@ void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 	    data_ready_cb((void *)xfr->buffer, xfr->actual_length);
 	    if(libusb_submit_transfer(xfr) < 0)
 	    {
-		// Error
-		libusb_free_transfer(xfr);
-		free(xfr->buffer);
-		fprintf(stderr,"USB resubmit transfer error\n");
-		stop=1;
+			// Error
+			libusb_free_transfer(xfr);
+			free(xfr->buffer);
+			fprintf(stderr,"USB resubmit transfer error\n");
+			active_transfers--;
+			err=1;
 	    }
-            break;
+        break;
         case LIBUSB_TRANSFER_CANCELLED:
-	    fprintf(stderr,"USB transfer error: canceled\n");
-	    stop=1;
-            break;
+			fprintf(stderr,"USB transfer error: canceled\n");
+			err=1;
+        break;
         case LIBUSB_TRANSFER_NO_DEVICE:
-	    fprintf(stderr,"USB transfer error: no device\n");
-	    stop=1;
-            break;
+			fprintf(stderr,"USB transfer error: no device\n");
+			err=1;
+        break;
         case LIBUSB_TRANSFER_TIMED_OUT:
-	    fprintf(stderr,"USB transfer error: time out\n");
-	    stop=1;
-            break;
+			fprintf(stderr,"USB transfer error: time out\n");
+	    	err=1;
+        break;
         case LIBUSB_TRANSFER_ERROR:
-	    fprintf(stderr,"USB transfer error\n");
-	    stop=1;
-            break;
+			fprintf(stderr,"USB transfer error\n");
+	    	err=1;
+        break;
         case LIBUSB_TRANSFER_STALL:
-	    fprintf(stderr,"USB transfer error: stall\n");
-	    stop=1;
-            break;
+			fprintf(stderr,"USB transfer error: stall\n");
+	    	err=1;
+        break;
         case LIBUSB_TRANSFER_OVERFLOW:
-            // Various type of errors here
-	    fprintf(stderr,"USB transfer error: overflow\n");
-	    stop=1;
+			fprintf(stderr,"USB transfer error: overflow\n");
+	    	err=1;
             break;
     }
+	if (err)
+	{
+		fprintf(stderr,"%d active transfers left\n", --active_transfers);
+		free(xfr->buffer);
+	}
+    if (active_transfers<2) stop=1;
+    
 }
 
-void usb_poll(viod)  					// need to be periodicaly called
+void usb_poll(void)  					// need to be periodicaly called
 {
     if(libusb_handle_events(NULL) != LIBUSB_SUCCESS)
     {

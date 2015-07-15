@@ -4,20 +4,18 @@
 #include <unistd.h>
 #include <string.h>
 #include "usb.h"
+#include "video.h"
+#include "keys.h"
 
 
 
-int argc=1;
-
-unsigned int chunksize;
-uint8_t *buf;
 uint8_t stop=0;
 uint8_t machine=0; //ms0511
 uint8_t color_mode=1;
 uint8_t scr_l_e=1;
 uint8_t video_stop=0;
-uint64_t data_size=0;
-uint8_t	data_ready=0;
+
+
 
 void init_()
 {
@@ -29,22 +27,30 @@ void init_()
 
 void done_(void)
 {
-	
+	video_done();
+	usb_done();
 }
 
 void data_ready_cb(void *usb_buffer,uint64_t length)
 {
-	memcpy(buf,usb_buffer,length);
-	data_size=length;
+	static uint8_t	data_ready;
 	data_ready++;
+	if(data_ready==1)
+	{
+		parse_data(usb_buffer,length);
+	}
+	else
+	if(data_ready>1)
+	{
+		fprintf(stderr,"Buffer overrun!\n");
+	}
+	data_ready=0;
 }
 
 
 int main(int argc, char **argv)
 {
 	init_();
-    int readed;
-    int ret;
     if(argc==2)
     {
         if(strcmp(argv[1],"-bk")==0)
@@ -59,11 +65,7 @@ int main(int argc, char **argv)
 		}
     }
     video_init();
-    buf=malloc(USB_BUF_SIZE);
     usb_start_transfer();
-    if(buf==NULL) fprintf(stderr,"Can't allocate %d bytes of memory\n",USB_BUF_SIZE);
-    else
-    {
             begin_listen_keys();
             while(!stop)
             {
@@ -75,28 +77,15 @@ int main(int argc, char **argv)
                     }
                 if(scl_pressed()==0) scr_l_e=1;
                 usb_poll();
-				if(data_ready==1)
-				{
-					parse_data(buf,data_size);
-					data_ready--;
-				}
-				else
-				if(data_ready>1)
-				{
-					fprintf(stderr,"Buffer overrun!\n");
-					data_ready=0;
-				}
-				
             }
             video_stop=1;
             while(video_stop!=2)
             {
-				usleep(1000000);
-				printf("Waiting video stream to close\n");
+				usleep(500000);
+				printf("Waiting video thread to close\n");
 			}
-        free(buf);
-        done();
-    }
+        done_();
+    
     
 	return 0;
 }

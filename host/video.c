@@ -35,7 +35,7 @@ uint16_t cur_line=0;
 uint16_t cur_px=0;
 
 extern px *framebuf;
-uint8_t *frame_data;
+
 
 int video_init()
 {
@@ -45,15 +45,16 @@ int video_init()
 		fprintf(stderr,"Can't allocate %lu bytes of memory.",fb_width*fb_height*sizeof(px));
 		exit(1);
 	}
-	frame_data=malloc(512*1024);
-	if (frame_data==NULL)
-	{
-		fprintf(stderr,"Can't allocate %lu bytes of memory.",fb_width*fb_height*sizeof(px));
-		exit(1);
-	}
+	
 	init_sdl();
 	
 	return 0;
+}
+
+void video_done(void)
+{
+	free(framebuf);
+	
 }
 
 uint8_t convert_color(c,l,y)
@@ -68,6 +69,7 @@ uint8_t convert_color(c,l,y)
 uint8_t convert_bw(uint8_t r, uint8_t g, uint8_t b, uint8_t y)
 {
 	uint8_t i,c;
+	i=0;
 	if(b) i+=1;
 	if(r) i+=2;
 	if(g) i+=4;
@@ -137,7 +139,6 @@ void next_pixel(uint8_t d)
 	}
 
 	if(cur_px<fb_width) cur_px+=1;
-//	printf("%d\n",cur_line);
 }
 
 

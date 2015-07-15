@@ -1,5 +1,5 @@
 compiler= gcc
-cflags= -O2 -pipe 
+cflags= -O2 -pipe -Wall
 includes=  `pkg-config libusb-1.0  --cflags` `sdl-config --cflags`
 libdir= `pkg-config libusb-1.0 --libs` `sdl-config --libs`
 link= -lm -lGL -lGLU

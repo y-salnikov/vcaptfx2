@@ -164,7 +164,7 @@ static void gpid_make_data_dp_state(volatile BYTE *pSTATE)
 {
 	/*
 	 * BRANCH
-	 * Branch to IDLE if condition is true, back to S1 otherwise.
+	 * Branch to IDLE if condition is true, back to S2 otherwise.
 	 * re-execute
 	 */
 	pSTATE[0] = (7 << 3) | (2 << 0) | (1 << 7);

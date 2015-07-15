@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <stdint.h>
+#include <unistd.h>
 #include "SDL.h"
 #include "SDL_opengl.h"
+#include "SDL_thread.h"
 #include <GL/gl.h>
 #include "render.h"
 
@@ -10,11 +12,11 @@ SDL_Thread *video;
 
 extern uint8_t video_stop;
 px *framebuf;
-uint32_t w_width=800;
-uint32_t w_height=600;
-float ratio=800.0/600.0;
-uint32_t t_width=1024;
-uint32_t t_height=1024;
+#define WINDOW_W 800
+#define WINDOW_H 600
+#define RATIO (800.0/600.0)
+
+
 GLuint fb_texture;
 extern uint8_t machine;
 float tx0,ty0,tx1,ty1;
@@ -36,8 +38,6 @@ void set_perspective(void)
 {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-//	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
-//	gluPerspective(40,(double)(w_width)/(double)(w_height),1,50);
     gluOrtho2D(0.0, 1.0, 0.0, 1.0);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -47,28 +47,25 @@ void set_perspective(void)
 int resizeWindow( int width, int height )
 {
     int x0,y0;
-    /* Height / width ration */
-//    GLfloat ratio;
+	static uint32_t w_width;
+	static uint32_t w_height;
 
-    /* Protect against a divide by zero */
-//    if ( height == 0 )
-//    height = 1;
     w_width=width;
     w_height=height;
-    if(width/ratio > height)
+    if(width/RATIO > height)
     {
-        w_width=height*ratio;
+        w_width=height*RATIO;
         w_height=height;
         x0=(width-w_width)/2;
         y0=0;
     } else
     {
         w_width=width;
-        w_height=width/ratio;
+        w_height=width/RATIO;
         x0=0;
         y0=(height-w_height)/2;
     }
-//    ratio = ( GLfloat )width / ( GLfloat )height;
+
     screen = SDL_SetVideoMode(width, height, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER );
     /* Setup our viewport. */
     glViewport( x0, y0, ( GLsizei )w_width, ( GLsizei )w_height );
@@ -86,7 +83,7 @@ int resizeWindow( int width, int height )
 void init_opengl(void)
 {
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
-    if (NULL == (screen = SDL_SetVideoMode(w_width, w_height, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER )))
+    if (NULL == (screen = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER )))
     {
         printf("Can't set OpenGL mode: %s\n", SDL_GetError());
         SDL_Quit();
@@ -95,9 +92,7 @@ void init_opengl(void)
     glClearColor(0.0,0.0,0.0,0.0);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
     SDL_WM_SetCaption("video capture",NULL);
-    glViewport(0,0,w_width,w_height);
-//    glEnable(GL_DEPTH_TEST);
-//    glDepthFunc(GL_LEQUAL);
+    glViewport(0,0,WINDOW_W,WINDOW_H);
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_LINE_SMOOTH);
     glEnable(GL_POINT_SMOOTH);
@@ -119,7 +114,6 @@ if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
       exit (1);
     }
 
-//  init_opengl ();
   if(machine==1)
   {
 	  tx0=BK_X0;
@@ -165,16 +159,12 @@ void update_texture( void* texture)
 
 void show_frame(void* texture)
 {
-//	char str[256];
-//	static uint32_t fc=0;
-    glLoadIdentity();
 
-//    gluLookAt(0,0,-3,  0,0,z_dst,  0,1,0);
+    glLoadIdentity();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); 	// очистка буферов
     glEnable(GL_TEXTURE_2D);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-//    update_texture();
-//    bind_fire_texture();
+
      update_texture(texture);
 
     glBegin(GL_QUADS);
@@ -194,21 +184,15 @@ void show_frame(void* texture)
       
     glFlush();
     SDL_GL_SwapBuffers();
-//    sprintf(str,"FRAME %d",fc++);
-//    SDL_WM_SetCaption(str,NULL);
 }
 
 int video_output(void *notused)
 {
-    static int init_flag;
+     
+    init_opengl ();
     
     while(!video_stop)
     {
-        if(init_flag==0)
-        {
-              init_opengl ();
-              init_flag=1;
-        }
         show_frame(framebuf);
         if(resize_flag)
         {
@@ -219,4 +203,5 @@ int video_output(void *notused)
     }
     video_stop=2;
     SDL_Quit();
+    return 0;
 }
