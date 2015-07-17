@@ -13,25 +13,14 @@
 #include <unistd.h>
 #include <time.h>
 #include "command.h"
-#include "usb.h"
 #include "compat.h"
+#include "types.h"
 #include "process.h"
-
-extern const char *vcapt_firmware[];
-struct libusb_config_descriptor *conf;
-libusb_device_handle *device_h;
-libusb_device *device;
-uint8_t active_transfers=0;
-unsigned char ep2in;
-uint8_t usb_transfer_cb_served=0;
-uint8_t usb_stop_flag=2;
-
-
-
+#include "usb.h"
 
 void callbackUSBTransferComplete(struct libusb_transfer *xfr);
 
-int WriteRAM(size_t addr,const unsigned char *data, size_t nbytes)
+int WriteRAM(usb_transfer_context_type *utc, size_t addr,const unsigned char *data, size_t nbytes)
 {
 	int n_errors=0;
 	size_t bs;
@@ -45,7 +34,7 @@ int WriteRAM(size_t addr,const unsigned char *data, size_t nbytes)
 		bs=dend-d;
 		if(bs>chunk_size)  bs=chunk_size;
 		dl_addr=addr+(d-data);
-		rv=libusb_control_transfer(device_h,0x40,0xa0,
+		rv=libusb_control_transfer(utc->device_h,0x40,0xa0,
 			/*addr=*/dl_addr,0,
 			/*buf=*/(unsigned char*)d,/*size=*/bs,
 			/*timeout=*/1000/*msec*/);
@@ -57,7 +46,7 @@ int WriteRAM(size_t addr,const unsigned char *data, size_t nbytes)
 }
 
 
-int ReadRAM(size_t addr,const unsigned char *data, size_t nbytes)
+int ReadRAM(usb_transfer_context_type *utc, size_t addr,const unsigned char *data, size_t nbytes)
 {
 	int n_errors=0;
 	size_t bs;
@@ -71,7 +60,7 @@ int ReadRAM(size_t addr,const unsigned char *data, size_t nbytes)
 		bs=dend-d;
 		if(bs>chunk_size)  bs=chunk_size;
 		rd_addr=addr+(d-data);
-		rv=libusb_control_transfer(device_h,0xc0,0xa0,
+		rv=libusb_control_transfer(utc->device_h,0xc0,0xa0,
 			/*addr=*/rd_addr,0,
 			/*buf=*/(unsigned char*)d,/*size=*/bs,
 			/*timeout=*/1000/*msec*/);
@@ -83,18 +72,18 @@ int ReadRAM(size_t addr,const unsigned char *data, size_t nbytes)
 }
 
 
-int FX2Reset(uint8_t running)
+int FX2Reset(usb_transfer_context_type *utc,uint8_t running)
 {
 	// Reset is accomplished by writing a 1 to address 0xE600. 
 	// Start running by writing a 0 to that address. 
 	const size_t reset_addr=0xe600;
 	unsigned char val = running ? 0 : 1;
 	
-	return(WriteRAM(reset_addr,&val,1));
+	return(WriteRAM(utc,reset_addr,&val,1));
 }
 
 
-int ProgramIHexLine(const char *buf,	const char *path,int line)
+int ProgramIHexLine(usb_transfer_context_type *utc, const char *buf,	const char *path,int line)
 {
 	const char *s;
 	unsigned int nbytes=0,addr=0,type=0;
@@ -138,7 +127,7 @@ int ProgramIHexLine(const char *buf,	const char *path,int line)
 		if((cksum+file_cksum)&0xff)
 		{  fprintf(stderr,"%s:%d: checksum mismatch (%u/%u)\n",
 			path,line,cksum,file_cksum);  return(1);  }
-		if(WriteRAM(addr,data,nbytes))
+		if(WriteRAM(utc,addr,data,nbytes))
 		{ free(data);  return(1);  }
 		free(data);
 	}
@@ -158,50 +147,56 @@ int ProgramIHexLine(const char *buf,	const char *path,int line)
 
 
 
-int usb_init(void)
+usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 {
 
+	usb_transfer_context_type *utc;
 	int err,line;
 	const char *s;
-	char **ss;
+	const char **ss;
+	
 	if (libusb_init(NULL))
 	{
 		fprintf(stderr,"libusb Init error\n");
-		return -2;
+		return NULL;
 	}
-	
-	device_h=libusb_open_device_with_vid_pid(NULL,0x04b4,0x8613);
-	if(device_h==NULL)
+	utc=malloc(sizeof(usb_transfer_context_type));
+	utc->active_transfers=0;
+	utc->usb_transfer_cb_served=0;
+	utc->usb_stop_flag=2;   // 0 -running, 1-stoppes, 2-not inited
+	utc->process_context=proc_cont;
+	utc->device_h=libusb_open_device_with_vid_pid(NULL,0x04b4,0x8613);
+	if(utc->device_h==NULL)
 	{
 	    fprintf(stderr,"No device found or device already configured.\n");
 	}
 	else 
 	{
 
-	    err=libusb_set_configuration(device_h,1);
+	    err=libusb_set_configuration(utc->device_h,1);
 	    if(err)
 	    {
 		fprintf(stderr,"Can't set device configuration\n");
-		return err;
+		return NULL;
 	    }
 
-	    err=libusb_claim_interface(device_h,0);
+	    err=libusb_claim_interface(utc->device_h,0);
 	    if(err)
 	    {
 		fprintf(stderr,"Can't claim device interface\n");
-		return err;
+		return NULL;
 	    }
 
-	    device=libusb_get_device(device_h);
-	    err=libusb_get_active_config_descriptor(device,&conf);
+	    utc->device=libusb_get_device(utc->device_h);
+	    err=libusb_get_active_config_descriptor(utc->device,&utc->conf);
 	    if(err)
 	    {
 		fprintf(stderr,"Can't get device configuration descriptor\n");
-		return err;
+		return NULL;
 	    }
 	    
-	    FX2Reset(0);
-	    ss=(void *)vcapt_firmware;
+	    FX2Reset(utc,0);
+	    ss=firmware;
 	    err=0;
 	    line=0;
 	    do
@@ -210,18 +205,18 @@ int usb_init(void)
 		if(s!=NULL)
 		{
 			//printf("%s\n",s);
-			err=ProgramIHexLine(s,"vcapt_firmvare",line);
+			err=ProgramIHexLine(utc,s,"vcapt_firmvare",line);
 			line++;
 		}
 	    }while(s);
-	    FX2Reset(1);
-	    libusb_free_config_descriptor 	(conf);
-	    err=libusb_release_interface(device_h,0);
+	    FX2Reset(utc,1);
+	    libusb_free_config_descriptor 	(utc->conf);
+	    err=libusb_release_interface(utc->device_h,0);
 		if(err)
 		{
 			fprintf(stderr,"Can't release device interface err=%d\n",err);
 		}
-		libusb_close(device_h);
+		libusb_close(utc->device_h);
 		libusb_exit(NULL);
 		 //wait 3 sec for renumeration
 		SLEEP(3000);
@@ -230,63 +225,61 @@ int usb_init(void)
 	if (libusb_init(NULL))
 	{
 		fprintf(stderr,"libusb Init error\n");
-		return -2;
+		return NULL;
 	}
-	device_h=libusb_open_device_with_vid_pid(NULL,0xffff,0x2048);
-	if(device_h==NULL)
+	utc->device_h=libusb_open_device_with_vid_pid(NULL,0xffff,0x2048);
+	if(utc->device_h==NULL)
 	{
 	    fprintf(stderr,"No reconfigured device found\n");
-	    return 1;
+	    return NULL;
 	}
-	err=libusb_set_configuration(device_h,1);
+	err=libusb_set_configuration(utc->device_h,1);
 	  if(err)
 	    {
 		fprintf(stderr,"Can't set device configuration\n");
-		return err;
+		return NULL;
 	    }
 
-	err=libusb_claim_interface(device_h,0);
+	err=libusb_claim_interface(utc->device_h,0);
 	   if(err)
 	    {
 		fprintf(stderr,"Can't claim device interface\n");
-		return err;
+		return NULL;
 	    }
 
-	device=libusb_get_device(device_h);
-	    err=libusb_get_active_config_descriptor(device,&conf);
+	utc->device=libusb_get_device(utc->device_h);
+	    err=libusb_get_active_config_descriptor(utc->device,&utc->conf);
 	    if(err)
 	    {
 		fprintf(stderr,"Can't get device configuration descriptor\n");
-		return err;
+		return NULL;
 	    }
 	
-	ep2in=conf->interface[0].altsetting[0].endpoint[0].bEndpointAddress;
+	utc->endpoint=utc->conf->interface[0].altsetting[0].endpoint[0].bEndpointAddress;
 
-	
-	
-	return 0;
+	return utc;
 }
 
-void usb_done(void)
+void usb_done(usb_transfer_context_type *utc)
 {
 	int err;
 	
-	libusb_free_config_descriptor 	(conf);
+	libusb_free_config_descriptor 	(utc->conf);
 	
-	err=libusb_release_interface(device_h,0);
+	err=libusb_release_interface(utc->device_h,0);
 	if(err)
 	{
 		fprintf(stderr,"Can't release device interface err=%d\n",err);
 	}
-	libusb_close(device_h);
+	libusb_close(utc->device_h);
 	libusb_exit(NULL);
-	
+	free(utc);
 }
 
 
 
 
-void usb_send_start_cmd(void)
+void usb_send_start_cmd(usb_transfer_context_type *utc)
 {
 	int rv;
 	struct cmd_start_acquisition cmd=
@@ -295,7 +288,7 @@ void usb_send_start_cmd(void)
 		.sample_delay_h=0,
 		.sample_delay_l=0
 	};
-	rv=libusb_control_transfer(device_h,0x40,CMD_START,
+	rv=libusb_control_transfer(utc->device_h,0x40,CMD_START,
 			/*addr=*/0,0,
 			/*buf=*/(unsigned char*)&cmd,/*size=*/3,
 			/*timeout=*/1000/*msec*/);
@@ -307,7 +300,7 @@ else
 }
 
 #define N 65536
-void usb_test(void)
+void usb_test(usb_transfer_context_type *utc)
 {
 	int rv,i;
 	struct version_info ver;
@@ -315,7 +308,7 @@ void usb_test(void)
 	int transfered=0;
 	FILE *f;
 	
-	rv=libusb_control_transfer(device_h,0xc0,CMD_GET_FW_VERSION,
+	rv=libusb_control_transfer(utc->device_h,0xc0,CMD_GET_FW_VERSION,
 			/*addr=*/0,0,
 			/*buf=*/(unsigned char*)&ver,/*size=*/2,
 			/*timeout=*/1000/*msec*/);
@@ -326,9 +319,9 @@ if(rv<0)
 	}
 	printf("Version %d.%d\n",ver.major,ver.minor);
 	buf=malloc(N);
-	usb_send_start_cmd();
+	usb_send_start_cmd(utc);
 
-	rv=libusb_bulk_transfer(device_h,ep2in,(unsigned char *)buf,N,&transfered,1000);
+	rv=libusb_bulk_transfer(utc->device_h,utc->endpoint,(unsigned char *)buf,N,&transfered,1000);
 	if(rv<0)
 	{
 	    fprintf(stderr,"Bulk transfer error\n");
@@ -345,18 +338,18 @@ if(rv<0)
 }
 
 
-void usb_start_transfer (void) 
+void usb_start_transfer (usb_transfer_context_type *utc) 
 {
     uint8_t i;
     uint8_t *usb_buf;
     struct libusb_transfer *xfr;
     
-    usb_send_start_cmd();
+    usb_send_start_cmd(utc);
     for(i=0;i<N_OF_TRANSFERS;i++)
     {
 		usb_buf=malloc(USB_BUF_SIZE);
 		xfr = libusb_alloc_transfer(0);
-		libusb_fill_bulk_transfer(xfr, device_h, ep2in, usb_buf, USB_BUF_SIZE, callbackUSBTransferComplete, NULL, 1000 );
+		libusb_fill_bulk_transfer(xfr, utc->device_h, utc->endpoint, usb_buf, USB_BUF_SIZE, callbackUSBTransferComplete, utc, 1000 );
 	    
 		if(libusb_submit_transfer(xfr) < 0)
 		{
@@ -365,7 +358,7 @@ void usb_start_transfer (void)
 		    free(usb_buf);
 		    fprintf(stderr,"USB submit transfer %d error\n",i);
 		}
-		else active_transfers++;
+		else utc->active_transfers++;
     }
     
     
@@ -374,6 +367,9 @@ void usb_start_transfer (void)
 void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 {
 	uint8_t err=0;
+	usb_transfer_context_type *utc;
+
+	utc=xfr->user_data;
     switch(xfr->status)
     {
         case LIBUSB_TRANSFER_COMPLETED:
@@ -381,14 +377,14 @@ void callbackUSBTransferComplete(struct libusb_transfer *xfr)
             // xfr->buffer
             // and the length is
             // xfr->actual_length
-	    parse_data((void *)xfr->buffer, xfr->actual_length);
+	    parse_data(utc->process_context,(void *)xfr->buffer, xfr->actual_length);
 	    if(libusb_submit_transfer(xfr) < 0)
 	    {
 			// Error
 			libusb_free_transfer(xfr);
 			free(xfr->buffer);
 			fprintf(stderr,"USB resubmit transfer error\n");
-			active_transfers--;
+			utc->active_transfers--;
 			err=1;
 	    }
         break;
@@ -397,7 +393,7 @@ void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 			err=1;
         break;
         case LIBUSB_TRANSFER_NO_DEVICE:
-			if(usb_stop_flag!=1) fprintf(stderr,"USB transfer error: no device\n");
+			if(utc->usb_stop_flag!=1) fprintf(stderr,"USB transfer error: no device\n");
 			err=1;
         break;
         case LIBUSB_TRANSFER_TIMED_OUT:
@@ -417,13 +413,13 @@ void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 	    	err=1;
             break;
     }
-	if (err && usb_stop_flag==0)
+	if (err && utc->usb_stop_flag==0)
 	{
-		fprintf(stderr,"%d active transfers left\n", --active_transfers);
+		fprintf(stderr,"%d active transfers left\n", --utc->active_transfers);
 		free(xfr->buffer);
 	}
-    if (active_transfers<2) usb_stop_flag=1;
-    usb_transfer_cb_served=1;
+    if (utc->active_transfers<2) utc->usb_stop_flag=1;
+    utc->usb_transfer_cb_served=1;
 }
 
 
@@ -435,25 +431,27 @@ void usb_poll(void)  					// need to be periodicaly called
     }
 }
 
-int usb_thread_function(void *not_used)
+int usb_thread_function(void *utc_ptr)
 {
-	usb_start_transfer();
-	usb_stop_flag=0;
-	while(!usb_stop_flag)
+	usb_transfer_context_type *utc;
+	utc=utc_ptr;
+	usb_start_transfer(utc);
+	utc->usb_stop_flag=0;
+	while(!utc->usb_stop_flag)
 	{
-		usb_transfer_cb_served=1;
-		while(usb_transfer_cb_served)	usb_poll();
+		utc->usb_transfer_cb_served=1;
+		while(utc->usb_transfer_cb_served)	usb_poll();
 		SLEEP(1);
 	}
 	return 0;
 }
 
-uint8_t usb_get_thread_state(void)
+uint8_t usb_get_thread_state(usb_transfer_context_type *utc)
 {
-	return usb_stop_flag;
+	return utc->usb_stop_flag;
 }
 
-void usb_stop_thread(void)
+void usb_stop_thread(usb_transfer_context_type *utc)
 {
-	usb_stop_flag=1;
+	utc->usb_stop_flag=1;
 }

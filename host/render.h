@@ -1,12 +1,9 @@
 
-typedef struct px_str_
-{
-	uint8_t R,G,B,A;
-} px;
 
-extern uint32_t resize_w,resize_h,resize_flag;
 
-void render_init(uint8_t mach_idx);
-void show_frame(void* texture);
-int video_output(void);
-int resizeWindow( int width, int height );
+render_context_type *render_init(void *machine_context,void *process_context);
+void show_frame(render_context_type *rc);
+int video_output(render_context_type *rc);
+int resizeWindow(render_context_type *rc, int width, int height );
+void render_done(render_context_type *rc);
+

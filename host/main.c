@@ -3,48 +3,25 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "libusb.h"
+#include "types.h"
 #include "usb.h"
 #include "compat.h"
 #include "render.h"
 #include "process.h"
 #include "SDL.h"
 #include "SDL_thread.h"
+#include "machine.h"
 
-
-
-uint8_t machine=0; //ms0511
-uint8_t color_mode=1;
+extern const char *vcapt_firmware[];
 uint8_t usb_stop=0;
 
 typedef enum EVENTS {EVENT_QUIT, EVENT_RESIZE, ESC_PRESSED, SCL_PRESSED, NOTHING}  event_type;
 
 
 
-void init_all(uint8_t mach_idx)
-{
-	int err;
-	process_init();
-	err=usb_init();
-	if(err)
-	{
-		fprintf(stderr,"libusb error\n");
-		exit(err);
-	}
-	render_init(mach_idx);
 
-	
-
-}
-
-void done_all(void)
-{
-	usb_done();
-	process_done();
-	
-}
-
-
-event_type read_events(void)
+event_type read_events(render_context_type *rc)
 {
 	SDL_Event event;
 	if (SDL_PollEvent (&event))
@@ -66,7 +43,7 @@ event_type read_events(void)
 		}
 		if (event.type == SDL_VIDEORESIZE)
 		{
-			resizeWindow(event.resize.w,event.resize.h);
+			resizeWindow(rc,event.resize.w,event.resize.h);
 			return EVENT_RESIZE;
 		} 
 
@@ -82,9 +59,14 @@ event_type read_events(void)
 int main(int argc, char **argv)
 {
 	uint8_t stop=0;
+	uint8_t machine=0;
 	uint8_t scr_l_e=1;
 	event_type ev=NOTHING;
-
+	process_context_type *pcont;
+	usb_transfer_context_type *utc;
+	machine_type *mac;
+	render_context_type *rc;
+	
     if(argc==2)
     {
         if(strcmp(argv[1],"-bk")==0)
@@ -98,33 +80,43 @@ int main(int argc, char **argv)
 			printf("ZX Spectrum mode\n");
 		}
     }
-    init_all(machine);
+	mac=machine_init(machine);
+    pcont=process_init(mac);
+    utc=usb_init(vcapt_firmware,pcont);
+    if(utc==NULL)
+	{
+		exit(1);
+	}
+    rc=render_init(mac,pcont);
     
-    SDL_CreateThread(usb_thread_function,NULL);
-    while(usb_get_thread_state()==2)
+    SDL_CreateThread(usb_thread_function,utc);
+    while(usb_get_thread_state(utc)==2)
     {
 		SLEEP(1);						//wait USB thread to start
 	}
             while(!stop)
             {
-				ev=read_events();
+				ev=read_events(rc);
                 if (ev==ESC_PRESSED || ev==EVENT_QUIT) stop=1;
                 if(ev==SCL_PRESSED && scr_l_e)
                     {
-                        color_mode=1-color_mode;
+                        mac->color_mode=1-mac->color_mode;
                         scr_l_e=0;
                     }
                 if(ev!=SCL_PRESSED) scr_l_e=1;  // SCROLL_LOCK key release
-                if(usb_get_thread_state())
+                if(usb_get_thread_state(utc))
                 {
 					stop=1;
-					fprintf(stderr,"USB thread stopped. 0x%X\n",usb_get_thread_state());
+					fprintf(stderr,"USB thread stopped. 0x%X\n",usb_get_thread_state(utc));
 				}
-				video_output();
+				video_output(rc);
             }
-            usb_stop_thread();
-            
-        done_all();
+            usb_stop_thread(utc);
+
+
+        usb_done(utc);
+        process_done(pcont);
+        render_done(rc);
     
     
 	return 0;

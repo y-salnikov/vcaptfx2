@@ -1,9 +1,12 @@
-int usb_init(void);
-void usb_done(void);
-void usb_test(void);
-uint8_t usb_get_thread_state(void);
-int usb_thread_function(void *not_used);
-void usb_stop_thread(void);
+
+usb_transfer_context_type*  usb_init(const char **firmware, void	*proc_cont);
+void usb_done(usb_transfer_context_type *utc);
+void usb_test(usb_transfer_context_type *utc);
+uint8_t usb_get_thread_state(usb_transfer_context_type *utc);
+int usb_thread_function(void *utc_ptr);
+void usb_stop_thread(usb_transfer_context_type *utc);
 
 #define USB_BUF_SIZE 256*1024
 #define N_OF_TRANSFERS 5
+
+

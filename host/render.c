@@ -4,23 +4,23 @@
 #include "SDL.h"
 #include "SDL_opengl.h"
 #include <GL/gl.h>
+#include "types.h"
 #include "render.h"
 #include "compat.h"
 #include "machine.h"
-
-SDL_Surface *screen;
-SDL_Thread *video;
+#include "process.h"
 
 
-px *framebuf;
+
+
+
 #define WINDOW_W 800
 #define WINDOW_H 600
 #define RATIO (800.0/600.0)
 
 
-GLuint fb_texture;
-extern uint8_t machine;
-float tx0,ty0,tx1,ty1;
+
+
 
 
 void set_perspective(void)
@@ -33,7 +33,7 @@ void set_perspective(void)
 }
 
 
-int resizeWindow( int width, int height )
+int resizeWindow(render_context_type *rc, int width, int height )
 {
     int x0,y0;
 	static uint32_t w_width;
@@ -55,7 +55,7 @@ int resizeWindow( int width, int height )
         y0=(height-w_height)/2;
     }
 
-    screen = SDL_SetVideoMode(width, height, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER );
+    rc->sdl_surface = SDL_SetVideoMode(width, height, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER );
     /* Setup our viewport. */
     glViewport( x0, y0, ( GLsizei )w_width, ( GLsizei )w_height );
     
@@ -69,10 +69,10 @@ int resizeWindow( int width, int height )
 
 
 
-void init_opengl(void)
+void init_opengl(render_context_type *rc)
 {
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
-    if (NULL == (screen = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER )))
+    if (NULL == (rc->sdl_surface = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER )))
     {
         printf("Can't set OpenGL mode: %s\n", SDL_GetError());
         SDL_Quit();
@@ -88,28 +88,35 @@ void init_opengl(void)
     glShadeModel(GL_SMOOTH);
     glClearStencil(0);     
     glClearDepth(1.0f);
-    glGenTextures(1,&fb_texture);
+    glGenTextures(1,&rc->fb_texture);
 	set_perspective();
 
 }
 
 
 
-void render_init(uint8_t mach_idx)
+render_context_type *render_init(void *machine_context, void *process_context)
 {
-if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
+	render_context_type *rc;
+	rc=malloc(sizeof(render_context_type));
+	rc->machine_context=machine_context;
+	rc->process_context=process_context;
+	
+	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
     {
       printf ("Unable to init SDL: %s\n", SDL_GetError ());
       exit (1);
     }
-    machine_get_area(mach_idx,&tx0,&ty0,&tx1,&ty1);
-	init_opengl();
+    machine_get_area(rc->machine_context,&rc->tx0,&rc->ty0,&rc->tx1,&rc->ty1);
+	init_opengl(rc);
+	return rc;
 }
 
-int dummy(int w,int h)
+void render_done(render_context_type *rc)
 {
-    return 0;
+	free(rc);
 }
+
 
 void update_texture( void* buf, GLint texture)
 {
@@ -120,28 +127,27 @@ void update_texture( void* buf, GLint texture)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, t_width, t_height, 0, GL_RGBA,GL_UNSIGNED_BYTE,buf);
 }
 
-void show_frame(void* buf)
+void show_frame(render_context_type *rc)
 {
-
     glLoadIdentity();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); 	// очистка буферов
     glEnable(GL_TEXTURE_2D);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
-    update_texture(buf,fb_texture);
+    update_texture(rc->process_context->framebuf,rc->fb_texture);
 
     glBegin(GL_QUADS);
 
-        glTexCoord2f(tx0,ty1);
+        glTexCoord2f(rc->tx0,rc->ty1);
         glVertex2f(0.0,0.0);
         
-        glTexCoord2f(tx1,ty1);
+        glTexCoord2f(rc->tx1,rc->ty1);
         glVertex2f(1.0,0.0);
         
-        glTexCoord2f(tx1,ty0);
+        glTexCoord2f(rc->tx1,rc->ty0);
         glVertex2f(1.0,1.0);
         
-        glTexCoord2f(tx0,ty0);
+        glTexCoord2f(rc->tx0,rc->ty0);
         glVertex2f(0.0,1.0);
     glEnd();
       
@@ -149,9 +155,9 @@ void show_frame(void* buf)
     SDL_GL_SwapBuffers();
 }
 
-int video_output(void)
+int video_output(render_context_type *rc)
 {
-        show_frame(framebuf);
+        show_frame(rc);
         SLEEP(1);
     return 0;
 }

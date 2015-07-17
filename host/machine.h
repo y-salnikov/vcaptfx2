@@ -38,5 +38,8 @@
 
 uint8_t convert_color(uint8_t c, uint8_t l, uint8_t y);
 uint8_t convert_bw(uint8_t r, uint8_t g, uint8_t b, uint8_t y);
-void machine_get_area(uint8_t mach_idx, float *x0, float *y0, float *x1, float *y1);
-void extract_color(uint8_t d,uint8_t machine_idx, uint8_t c_mode, uint8_t *R, uint8_t *G, uint8_t *B);
+void machine_get_area(machine_type *mac, float *x0, float *y0, float *x1, float *y1);
+void extract_color(machine_type *mac, uint8_t d, uint8_t *R, uint8_t *G, uint8_t *B);
+
+machine_type *machine_init(uint8_t machine_idx);
+void machine_done(machine_type *mac);

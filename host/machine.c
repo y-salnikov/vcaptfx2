@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <stdlib.h>
+#include "types.h"
 #include "machine.h"
 
 const uint8_t bw_colors[16]={0x00,0x2c,0x42,0x58,0x6e,0x84,0x9a,0xb0,
@@ -26,9 +28,9 @@ uint8_t convert_bw(uint8_t r, uint8_t g, uint8_t b, uint8_t y)
 	return c;
 }
 
-void machine_get_area(uint8_t mach_idx, float *x0, float *y0, float *x1, float *y1)
+void machine_get_area(machine_type *mac, float *x0, float *y0, float *x1, float *y1)
 {
- if(mach_idx==1)
+ if(mac->machine_idx==1)
   {
 	  *x0=BK_X0;
 	  *y0=BK_Y0;
@@ -36,7 +38,7 @@ void machine_get_area(uint8_t mach_idx, float *x0, float *y0, float *x1, float *
 	  *y1=BK_Y1;
   }
   else
-  if(mach_idx==0)
+  if(mac->machine_idx==0)
   {
   	  *x0=MS_X0;
 	  *y0=MS_Y0;
@@ -45,7 +47,7 @@ void machine_get_area(uint8_t mach_idx, float *x0, float *y0, float *x1, float *
 
   }
   else 
-  if(mach_idx==2)
+  if(mac->machine_idx==2)
   {
   	  *x0=ZX_X0;
 	  *y0=ZX_Y0;
@@ -56,15 +58,15 @@ void machine_get_area(uint8_t mach_idx, float *x0, float *y0, float *x1, float *
 }
 
 
-void extract_color(uint8_t d,uint8_t machine_idx, uint8_t c_mode, uint8_t *R, uint8_t *G, uint8_t *B)
+void extract_color(machine_type *mac, uint8_t d, uint8_t *R, uint8_t *G, uint8_t *B)
 {
 	uint8_t data,y;
 
 	data=~d;
 	y=data & Y_BIT;
-	if(machine_idx==1)
+	if(mac->machine_idx==1)
 	{
-		if(c_mode)
+		if(mac->color_mode)
 		{
 			*R=convert_color(!(data & R_BIT),1,1);
 			*G=convert_color(!(data & G_BIT),1,1);
@@ -78,9 +80,9 @@ void extract_color(uint8_t d,uint8_t machine_idx, uint8_t c_mode, uint8_t *R, ui
 		}
 	}
 	else
-	if(machine_idx==0)
+	if(mac->machine_idx==0)
 	{
-		if(c_mode)
+		if(mac->color_mode)
 		{
 			*R=convert_color(data & R_BIT,data & RL_BIT,y);
 			*G=convert_color(data & G_BIT,data & GL_BIT,y);
@@ -94,9 +96,9 @@ void extract_color(uint8_t d,uint8_t machine_idx, uint8_t c_mode, uint8_t *R, ui
 		}
 	}
 	else
-	if(machine_idx==2)
+	if(mac->machine_idx==2)
 	{
-		if(c_mode)
+		if(mac->color_mode)
 		{
 			*R=convert_color(!(data & R_BIT),1,!y);
 			*G=convert_color(!(data & G_BIT),1,!y);
@@ -109,4 +111,19 @@ void extract_color(uint8_t d,uint8_t machine_idx, uint8_t c_mode, uint8_t *R, ui
 			*B=convert_bw(!(data & R_BIT),!(data & G_BIT),!(data & B_BIT),!y);
 		}
 	}
+}
+
+
+machine_type *machine_init(uint8_t machine_idx)
+{
+	machine_type *mac;
+	mac=malloc(sizeof (machine_type));
+	mac->machine_idx=machine_idx;
+	mac->color_mode=1;
+	return mac;
+}
+
+void machine_done(machine_type *mac)
+{
+	free(mac);
 }

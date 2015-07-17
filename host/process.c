@@ -2,35 +2,35 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "types.h"
 #include "render.h"
 #include "process.h"
 #include "machine.h"
 
 
-extern uint8_t machine;
-extern uint8_t color_mode;
-uint16_t cur_line=0;
-uint16_t cur_px=0;
 
-extern px *framebuf;
-
-
-int process_init()
+process_context_type* process_init(void *mac)
 {
-	framebuf=calloc(t_width*t_height,sizeof(px));
-	if (framebuf==NULL)
+	process_context_type *prc;
+	prc=malloc(sizeof(process_context_type));
+	prc->cur_line=0;
+	prc->cur_px=0;
+	prc->machine_context=mac;
+	prc->framebuf=calloc(t_width*t_height,sizeof(px));
+	if (prc->framebuf==NULL)
 	{
 		fprintf(stderr,"Can't allocate %lu bytes of memory.",(long unsigned int)fb_width*fb_height*sizeof(px));
 		exit(1);
 	}
 	
 	
-	return 0;
+	return prc;
 }
 
-void process_done(void)
+void process_done(process_context_type *prc)
 {
-	free(framebuf);
+	free(prc->framebuf);
+	free(prc);
 	
 }
 
@@ -38,13 +38,15 @@ void process_done(void)
 
 
 
-void next_pixel(uint8_t d)
+void next_pixel(process_context_type *prc, uint8_t d)
 {
 	uint32_t index;
-	index=((cur_line*fb_width)+cur_px);
-	extract_color(d,machine,color_mode,&framebuf[index].R,&framebuf[index].G,&framebuf[index].B);
-	framebuf[index].A=0;
-	if(cur_px<fb_width) cur_px+=1;
+	machine_type *mac;
+	mac=prc->machine_context;
+	index=((prc->cur_line*fb_width)+prc->cur_px);
+	extract_color(mac,d,&prc->framebuf[index].R,&prc->framebuf[index].G,&prc->framebuf[index].B);
+	prc->framebuf[index].A=0;
+	if(prc->cur_px<fb_width) prc->cur_px+=1;
 }
 
 
@@ -82,7 +84,7 @@ uint8_t h_detect(uint8_t c)
 
 
 
-void parse_data(uint8_t *buf, uint32_t length)
+void parse_data(process_context_type *prc, uint8_t *buf, uint32_t length)
 {
 	uint32_t i;
 	uint8_t c;
@@ -90,18 +92,18 @@ void parse_data(uint8_t *buf, uint32_t length)
 	{
 		c=buf[i];
 
-		if (h_detect(c) && (cur_line<fb_height))
+		if (h_detect(c) && (prc->cur_line<fb_height))
 		{
-			cur_px=0;
-			cur_line++;
+			prc->cur_px=0;
+			prc->cur_line++;
 		}
 		if (v_detect(c))
 		{
-			cur_line=0;
-			cur_px=0;
+			prc->cur_line=0;
+			prc->cur_px=0;
 		}
 
-		next_pixel(c);
+		next_pixel(prc,c);
 	}
 }
 
