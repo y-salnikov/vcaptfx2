@@ -14,17 +14,17 @@
 #include <time.h>
 #include "command.h"
 #include "usb.h"
-#include "main.h"
+#include "compat.h"
+#include "process.h"
 
 extern const char *vcapt_firmware[];
-extern uint8_t stop;
 struct libusb_config_descriptor *conf;
 libusb_device_handle *device_h;
 libusb_device *device;
 uint8_t active_transfers=0;
 unsigned char ep2in;
-
-
+uint8_t usb_transfer_cb_served=0;
+uint8_t usb_stop_flag=2;
 
 
 
@@ -50,7 +50,7 @@ int WriteRAM(size_t addr,const unsigned char *data, size_t nbytes)
 			/*buf=*/(unsigned char*)d,/*size=*/bs,
 			/*timeout=*/1000/*msec*/);
 		if(rv<0)
-		{  fprintf(stderr,"Error: Writing %lu bytes at 0x%X\n",bs,(unsigned int)dl_addr);  ++n_errors;  }
+		{  fprintf(stderr,"Error: Writing %lu bytes at 0x%X\n",(long unsigned int)bs,(unsigned int)dl_addr);  ++n_errors;  }
 		d+=bs;
 	}
 	return(n_errors);
@@ -76,7 +76,7 @@ int ReadRAM(size_t addr,const unsigned char *data, size_t nbytes)
 			/*buf=*/(unsigned char*)d,/*size=*/bs,
 			/*timeout=*/1000/*msec*/);
 		if(rv<0)
-		{  fprintf(stderr,"Error: Reading %lu bytes at 0x%X\n",bs,(unsigned int)rd_addr);  ++n_errors;  }
+		{  fprintf(stderr,"Error: Reading %lu bytes at 0x%X\n",(long unsigned int)bs,(unsigned int)rd_addr);  ++n_errors;  }
 		d+=bs;
 	}
 	return(n_errors);
@@ -223,12 +223,8 @@ int usb_init(void)
 		}
 		libusb_close(device_h);
 		libusb_exit(NULL);
-		usleep(500000); //wait 3 sec for renumeration
-		usleep(500000);
-		usleep(500000);
-		usleep(500000);
-		usleep(500000);
-		usleep(500000);
+		 //wait 3 sec for renumeration
+		SLEEP(3000);
 
 	}
 	if (libusb_init(NULL))
@@ -385,7 +381,7 @@ void callbackUSBTransferComplete(struct libusb_transfer *xfr)
             // xfr->buffer
             // and the length is
             // xfr->actual_length
-	    data_ready_cb((void *)xfr->buffer, xfr->actual_length);
+	    parse_data((void *)xfr->buffer, xfr->actual_length);
 	    if(libusb_submit_transfer(xfr) < 0)
 	    {
 			// Error
@@ -401,7 +397,7 @@ void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 			err=1;
         break;
         case LIBUSB_TRANSFER_NO_DEVICE:
-			fprintf(stderr,"USB transfer error: no device\n");
+			if(usb_stop_flag!=1) fprintf(stderr,"USB transfer error: no device\n");
 			err=1;
         break;
         case LIBUSB_TRANSFER_TIMED_OUT:
@@ -421,14 +417,15 @@ void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 	    	err=1;
             break;
     }
-	if (err)
+	if (err && usb_stop_flag==0)
 	{
 		fprintf(stderr,"%d active transfers left\n", --active_transfers);
 		free(xfr->buffer);
 	}
-    if (active_transfers<2) stop=1;
-    
+    if (active_transfers<2) usb_stop_flag=1;
+    usb_transfer_cb_served=1;
 }
+
 
 void usb_poll(void)  					// need to be periodicaly called
 {
@@ -436,4 +433,27 @@ void usb_poll(void)  					// need to be periodicaly called
     {
 	fprintf(stderr,"USB error event\n");
     }
+}
+
+int usb_thread_function(void *not_used)
+{
+	usb_start_transfer();
+	usb_stop_flag=0;
+	while(!usb_stop_flag)
+	{
+		usb_transfer_cb_served=1;
+		while(usb_transfer_cb_served)	usb_poll();
+		SLEEP(1);
+	}
+	return 0;
+}
+
+uint8_t usb_get_thread_state(void)
+{
+	return usb_stop_flag;
+}
+
+void usb_stop_thread(void)
+{
+	usb_stop_flag=1;
 }

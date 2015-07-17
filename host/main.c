@@ -4,53 +4,87 @@
 #include <unistd.h>
 #include <string.h>
 #include "usb.h"
-#include "video.h"
-#include "keys.h"
+#include "compat.h"
+#include "render.h"
+#include "process.h"
+#include "SDL.h"
+#include "SDL_thread.h"
 
 
 
-uint8_t stop=0;
 uint8_t machine=0; //ms0511
 uint8_t color_mode=1;
-uint8_t scr_l_e=1;
-uint8_t video_stop=0;
+uint8_t usb_stop=0;
+
+typedef enum EVENTS {EVENT_QUIT, EVENT_RESIZE, ESC_PRESSED, SCL_PRESSED, NOTHING}  event_type;
 
 
 
-void init_()
+void init_all(uint8_t mach_idx)
 {
 	int err;
+	process_init();
 	err=usb_init();
-	if(err) exit(err);
+	if(err)
+	{
+		fprintf(stderr,"libusb error\n");
+		exit(err);
+	}
+	render_init(mach_idx);
+
+	
 
 }
 
-void done_(void)
+void done_all(void)
 {
-	video_done();
 	usb_done();
+	process_done();
+	
 }
 
-void data_ready_cb(void *usb_buffer,uint64_t length)
+
+event_type read_events(void)
 {
-	static uint8_t	data_ready;
-	data_ready++;
-	if(data_ready==1)
-	{
-		parse_data(usb_buffer,length);
-	}
-	else
-	if(data_ready>1)
-	{
-		fprintf(stderr,"Buffer overrun!\n");
-	}
-	data_ready=0;
+	SDL_Event event;
+	if (SDL_PollEvent (&event))
+    {
+      if (event.type == SDL_QUIT)
+		{
+			return EVENT_QUIT;
+		}
+		if (event.type == SDL_KEYDOWN)
+		{
+			if (event.key.keysym.sym == SDLK_ESCAPE)
+		    {
+				return ESC_PRESSED;
+		    }
+			if (event.key.keysym.sym == SDLK_SCROLLOCK)
+			{
+				return SCL_PRESSED;
+			}
+		}
+		if (event.type == SDL_VIDEORESIZE)
+		{
+			resizeWindow(event.resize.w,event.resize.h);
+			return EVENT_RESIZE;
+		} 
+
+    }
+  return NOTHING;
 }
+
+
+
+
 
 
 int main(int argc, char **argv)
 {
-	init_();
+	uint8_t stop=0;
+	uint8_t scr_l_e=1;
+	event_type ev=NOTHING;
+
     if(argc==2)
     {
         if(strcmp(argv[1],"-bk")==0)
@@ -64,28 +98,35 @@ int main(int argc, char **argv)
 			printf("ZX Spectrum mode\n");
 		}
     }
-    video_init();
-    usb_start_transfer();
-            begin_listen_keys();
+    init_all(machine);
+    
+    SDL_CreateThread(usb_thread_function,NULL);
+    while(usb_get_thread_state()==2)
+    {
+		SLEEP(1);						//wait USB thread to start
+	}
             while(!stop)
             {
-                if (esc_pressed()) stop=1;
-                if(scl_pressed() && scr_l_e)
+				ev=read_events();
+                if (ev==ESC_PRESSED || ev==EVENT_QUIT) stop=1;
+                if(ev==SCL_PRESSED && scr_l_e)
                     {
                         color_mode=1-color_mode;
                         scr_l_e=0;
                     }
-                if(scl_pressed()==0) scr_l_e=1;
-                usb_poll();
+                if(ev!=SCL_PRESSED) scr_l_e=1;  // SCROLL_LOCK key release
+                if(usb_get_thread_state())
+                {
+					stop=1;
+					fprintf(stderr,"USB thread stopped. 0x%X\n",usb_get_thread_state());
+				}
+				video_output();
             }
-            video_stop=1;
-            while(video_stop!=2)
-            {
-				usleep(500000);
-				printf("Waiting video thread to close\n");
-			}
-        done_();
+            usb_stop_thread();
+            
+        done_all();
     
     
 	return 0;
 }
+

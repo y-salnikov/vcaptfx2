@@ -3,14 +3,15 @@
 #include <unistd.h>
 #include "SDL.h"
 #include "SDL_opengl.h"
-#include "SDL_thread.h"
 #include <GL/gl.h>
 #include "render.h"
+#include "compat.h"
+#include "machine.h"
 
 SDL_Surface *screen;
 SDL_Thread *video;
 
-extern uint8_t video_stop;
+
 px *framebuf;
 #define WINDOW_W 800
 #define WINDOW_H 600
@@ -20,18 +21,6 @@ px *framebuf;
 GLuint fb_texture;
 extern uint8_t machine;
 float tx0,ty0,tx1,ty1;
-extern uint32_t resize_w,resize_h,resize_flag;
-int dummy(int w,int h);
-int (*resize_callback)(int w,int h)=dummy;
-
-int video_output(void *notused);
-
-void set_resize_callback(int (*callback)(int w,int h))
-{
-    resize_callback=callback;
-}
-
-
 
 
 void set_perspective(void)
@@ -101,46 +90,20 @@ void init_opengl(void)
     glClearDepth(1.0f);
     glGenTextures(1,&fb_texture);
 	set_perspective();
-    set_resize_callback(resizeWindow);
+
 }
 
 
 
-void init_sdl(void)
+void render_init(uint8_t mach_idx)
 {
 if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
     {
       printf ("Unable to init SDL: %s\n", SDL_GetError ());
       exit (1);
     }
-
-  if(machine==1)
-  {
-	  tx0=BK_X0;
-	  ty0=BK_Y0;
-	  tx1=BK_X1;
-	  ty1=BK_Y1;
-  }
-  else
-  if(machine==0)
-  {
-  	  tx0=MS_X0;
-	  ty0=MS_Y0;
-	  tx1=MS_X1;
-	  ty1=MS_Y1;
-
-  }
-  else 
-  if(machine==2)
-  {
-  	  tx0=ZX_X0;
-	  ty0=ZX_Y0;
-	  tx1=ZX_X1;
-	  ty1=ZX_Y1;
-
-  }
-  video_stop=0;
-  video=SDL_CreateThread(video_output,NULL);
+    machine_get_area(mach_idx,&tx0,&ty0,&tx1,&ty1);
+	init_opengl();
 }
 
 int dummy(int w,int h)
@@ -148,16 +111,16 @@ int dummy(int w,int h)
     return 0;
 }
 
-void update_texture( void* texture)
+void update_texture( void* buf, GLint texture)
 {
     
-    glBindTexture(GL_TEXTURE_2D, fb_texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);   
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, t_width, t_height, 0, GL_RGBA,GL_UNSIGNED_BYTE,texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, t_width, t_height, 0, GL_RGBA,GL_UNSIGNED_BYTE,buf);
 }
 
-void show_frame(void* texture)
+void show_frame(void* buf)
 {
 
     glLoadIdentity();
@@ -165,7 +128,7 @@ void show_frame(void* texture)
     glEnable(GL_TEXTURE_2D);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
-     update_texture(texture);
+    update_texture(buf,fb_texture);
 
     glBegin(GL_QUADS);
 
@@ -186,22 +149,9 @@ void show_frame(void* texture)
     SDL_GL_SwapBuffers();
 }
 
-int video_output(void *notused)
+int video_output(void)
 {
-     
-    init_opengl ();
-    
-    while(!video_stop)
-    {
         show_frame(framebuf);
-        if(resize_flag)
-        {
-            resizeWindow(resize_w,resize_h);
-            resize_flag=0;
-        }
-        usleep(1000);
-    }
-    video_stop=2;
-    SDL_Quit();
+        SLEEP(1);
     return 0;
 }
