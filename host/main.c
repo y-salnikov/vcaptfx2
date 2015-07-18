@@ -53,39 +53,83 @@ event_type read_events(render_context_type *rc)
 
 
 
-
+void print_help(void)
+{
+	printf("Usege:  vcaptfx2 --list | -l  : List all machines\n");
+	printf("                 --machine | -m <index> or <name> [-c PATH_TO_CFG]: Start capture from  chosen machine.\n\n");
+	printf("default config file will be writen at  %s\n", get_config_file_path());
+	printf("First machine profile if no arguments passed\n");
+	exit(0);
+}
 
 
 int main(int argc, char **argv)
 {
 	uint8_t stop=0;
-	uint8_t machine=0;
 	uint8_t scr_l_e=1;
 	event_type ev=NOTHING;
 	process_context_type *pcont;
 	usb_transfer_context_type *utc;
 	machine_type *mac;
 	render_context_type *rc;
-	
+	uint8_t command=0;
+	uint8_t test=0;
+	char* mach_name=NULL;
+	char* cfg_file=NULL;
     if(argc==2)
     {
-        if(strcmp(argv[1],"-bk")==0)
+        if((strcmp(argv[1],"-l")==0) || (strcmp(argv[1],"--list")==0))
         {
-            machine=1;
-            printf("БК-0010-01 mode\n");
+            command=1;
         } else
-        if(strcmp(argv[1],"-zx")==0)
         {
-			machine=2;
-			printf("ZX Spectrum mode\n");
+			if(strcmp(argv[1],"-t")==0)
+			{
+				test=1;
+				command=2;
+				mach_name="1";
+			}
+			else	print_help();
 		}
+        
     }
-	mac=machine_init(machine);
+    else
+    if(argc==3)
+    {
+		if((strcmp(argv[1],"-m")==0) || (strcmp(argv[1],"--machine")==0))
+		{
+			mach_name=argv[2];
+			command=2;
+		}
+	}
+	else
+	if(argc==5)
+    {
+		if(((strcmp(argv[1],"-m")==0) || (strcmp(argv[1],"--machine")==0)) && (strcmp(argv[3],"-f")==0))
+		{
+			mach_name=argv[2];
+			cfg_file=argv[4];
+			command=3;
+		}
+	}
+	if(argc==1)
+	{
+		command=2;
+		mach_name="1";
+	}
+	
+	mac=machine_init(command,mach_name,cfg_file);
+	if (mac==NULL) print_help();
     pcont=process_init(mac);
     utc=usb_init(vcapt_firmware,pcont);
     if(utc==NULL)
 	{
 		exit(1);
+	}
+	if(test)
+	{
+		usb_test(utc);
+		exit(0);
 	}
     rc=render_init(mac,pcont);
     

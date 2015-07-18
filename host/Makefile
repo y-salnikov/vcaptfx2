@@ -1,7 +1,7 @@
 compiler= gcc
-cflags= -O2 -pipe -Wall -DUNIX=1
-includes=  `pkg-config libusb-1.0  --cflags` `sdl-config --cflags`
-libdir= `pkg-config libusb-1.0 --libs` `sdl-config --libs`
+cflags= -O2 -pipe -Wall -DUNIX=1 
+includes=  `pkg-config libusb-1.0  --cflags` `sdl-config --cflags` `pkg-config libconfig --cflags`
+libdir= `pkg-config libusb-1.0 --libs` `sdl-config --libs` `pkg-config libconfig --libs`
 link= -lm -lGL -lGLU
 target:= vcaptfx2
 

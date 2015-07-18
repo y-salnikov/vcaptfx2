@@ -18,7 +18,7 @@
 #include "process.h"
 #include "usb.h"
 
-void callbackUSBTransferComplete(struct libusb_transfer *xfr);
+LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr);
 
 int WriteRAM(usb_transfer_context_type *utc, size_t addr,const unsigned char *data, size_t nbytes)
 {
@@ -172,6 +172,7 @@ usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 	}
 	else 
 	{
+		printf("Transfering firmware\n");
 
 	    err=libusb_set_configuration(utc->device_h,1);
 	    if(err)
@@ -282,9 +283,12 @@ void usb_done(usb_transfer_context_type *utc)
 void usb_send_start_cmd(usb_transfer_context_type *utc)
 {
 	int rv;
+	uint8_t flg;
+	flg=CMD_START_FLAGS_SAMPLE_8BIT;
+	if(utc->process_context->machine_context->clk_inverted) flg|= CMD_START_FLAGS_INV_CLK;
 	struct cmd_start_acquisition cmd=
 	{
-		.flags=CMD_START_FLAGS_SAMPLE_8BIT | CMD_START_FLAGS_INV_CLK,
+		.flags=flg,
 		.sample_delay_h=0,
 		.sample_delay_l=0
 	};
@@ -299,7 +303,7 @@ else
 	
 }
 
-#define N 65536
+#define N 1024*1024
 void usb_test(usb_transfer_context_type *utc)
 {
 	int rv,i;
@@ -331,7 +335,7 @@ if(rv<0)
 	f=fopen("/tmp/usb_log.dat","w");
 	for(i=0;i<transfered;i++)
 	{
-	    fprintf(f,"%d\n",buf[i]);
+	    fprintf(f,"%c\n",buf[i]);
 	}
 	fclose(f);
 
@@ -364,7 +368,7 @@ void usb_start_transfer (usb_transfer_context_type *utc)
     
 }
 
-void callbackUSBTransferComplete(struct libusb_transfer *xfr)
+LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 {
 	uint8_t err=0;
 	usb_transfer_context_type *utc;

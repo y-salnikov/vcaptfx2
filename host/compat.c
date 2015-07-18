@@ -1,4 +1,9 @@
 #include "compat.h"
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 #ifdef COMPAT_USLEEP
 /*
  * http://stackoverflow.com/questions/5801813/c-usleep-is-obsolete-workarounds-for-windows-mingw
@@ -36,3 +41,33 @@ int __cdecl __ms_vsnprintf(char * __restrict__ d,size_t n,const char * __restric
     return vsnprintf(d, n, format, arg);
 }
 #endif /* COMPAT_MINGW_MS_VSNPRINTF */
+
+#ifdef WIN32
+			int is_file_exist(const char *filename)
+			{
+				return GetFileAttributes(filename) !=INVALID_FILE_ATTRIBUTES;
+			}
+#elif UNIX
+			int is_file_exist(const char *filename)
+			{
+				struct stat st;
+				int result = stat(filename,&st);
+				return result==0;
+			}
+#endif
+
+char *get_config_file_path(void)
+{
+	static char *path;
+	char *envvar=NULL;
+	if(path==NULL)
+	{
+		path=malloc(65535);
+		envvar=getenv(ENV_VAR);
+		if (envvar==NULL) fprintf(stderr, "Env.variable \"%s\" not found\n",ENV_VAR);
+		strcpy(path,envvar);
+		strcat(path,DEFAULT_CFG_PATH);
+	}
+	return path;
+	
+}

@@ -72,7 +72,7 @@ int resizeWindow(render_context_type *rc, int width, int height )
 void init_opengl(render_context_type *rc)
 {
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
-    if (NULL == (rc->sdl_surface = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER )))
+    if (NULL == (rc->sdl_surface = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0, SDL_OPENGL |SDL_RESIZABLE  )))
     {
         printf("Can't set OpenGL mode: %s\n", SDL_GetError());
         SDL_Quit();
@@ -118,13 +118,13 @@ void render_done(render_context_type *rc)
 }
 
 
-void update_texture( void* buf, GLint texture)
+void update_texture( render_context_type *rc)
 {
     
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glBindTexture(GL_TEXTURE_2D, rc->fb_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);   
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, t_width, t_height, 0, GL_RGBA,GL_UNSIGNED_BYTE,buf);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rc->process_context->machine_context->fb_size, rc->process_context->machine_context->fb_size, 0, GL_RGBA,GL_UNSIGNED_BYTE,rc->process_context->framebuf);
 }
 
 void show_frame(render_context_type *rc)
@@ -134,7 +134,7 @@ void show_frame(render_context_type *rc)
     glEnable(GL_TEXTURE_2D);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
-    update_texture(rc->process_context->framebuf,rc->fb_texture);
+    update_texture(rc);
 
     glBegin(GL_QUADS);
 

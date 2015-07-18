@@ -13,4 +13,4 @@ As firmware for FX2 chip used slightly modified fx2lafw version from sigrok proj
 The ifclk pin now input, eliminated wait states so each clock pulse now sample data. 
 Host side software uses libusb to acquire data from FX2 and render image using OpenGL.
 It is written for GNU/Linux but should be easy to port.
-Software has hardcoded presets for my few computers: МС-0511(УКНЦ), БК0010-01 and КР-05 (zx-spectrum clone).
+Default config represets my few computers: МС-0511(УКНЦ), БК0010-01 and КР-05 (zx-spectrum clone).

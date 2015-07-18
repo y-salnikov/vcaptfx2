@@ -5,13 +5,26 @@ typedef struct
 	uint8_t R,G,B,A;
 } px;
 
+typedef struct
+{
+	uint8_t mask;
+	uint8_t R,G,B;
+	uint8_t BW;
+}mach_colors;
+
 
 typedef struct machine_struct
 {
-	uint8_t machine_idx;
+	int fb_size;
 	uint8_t color_mode;
-	
-	
+	char *name;
+	int clk_inverted;
+	int inv_bits;
+	int sync_bit_mask;
+	int pixel_bits_mask;
+	mach_colors *colors;
+	int colors_length;
+	double x0,y0,x1,y1;
 }machine_type;
 
 
@@ -30,7 +43,7 @@ typedef struct process_context_struct
 typedef struct render_context_struct
 {
 	void *sdl_surface;
-	uint fb_texture;
+	unsigned int fb_texture;
 	float tx0,ty0,tx1,ty1;
 	machine_type *machine_context;
 	process_context_type *process_context;
