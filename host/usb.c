@@ -17,6 +17,7 @@
 #include "types.h"
 #include "process.h"
 #include "usb.h"
+#include "profile.h"
 
 LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr);
 
@@ -310,7 +311,7 @@ void usb_test(usb_transfer_context_type *utc)
 	struct version_info ver;
 	uint8_t *buf;
 	int transfered=0;
-	FILE *f;
+//	FILE *f;
 	
 	rv=libusb_control_transfer(utc->device_h,0xc0,CMD_GET_FW_VERSION,
 			/*addr=*/0,0,
@@ -323,21 +324,23 @@ if(rv<0)
 	}
 	printf("Version %d.%d\n",ver.major,ver.minor);
 	buf=malloc(N);
+	profile_start();
 	usb_send_start_cmd(utc);
-
+	profile_check("usb_send_start_cmd");
 	rv=libusb_bulk_transfer(utc->device_h,utc->endpoint,(unsigned char *)buf,N,&transfered,1000);
+	profile_check("bulk_transfer");
 	if(rv<0)
 	{
 	    fprintf(stderr,"Bulk transfer error\n");
 	    return;
 	}
 	printf("transfered %d bytes\n", transfered);
-	f=fopen("/tmp/usb_log.dat","w");
+//	f=fopen("usb_log.dat","w");
 	for(i=0;i<transfered;i++)
 	{
-	    fprintf(f,"%c\n",buf[i]);
+//	    fprintf(f,"%c\n",buf[i]);
 	}
-	fclose(f);
+//	fclose(f);
 
 }
 
