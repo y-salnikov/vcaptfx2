@@ -275,6 +275,7 @@ void usb_done(usb_transfer_context_type *utc)
 	}
 	libusb_close(utc->device_h);
 	libusb_exit(NULL);
+	free(utc->control_buffer);
 	free(utc);
 }
 
@@ -283,25 +284,26 @@ void usb_done(usb_transfer_context_type *utc)
 
 void usb_send_start_cmd(usb_transfer_context_type *utc)
 {
-	int rv;
 	uint8_t flg;
+	struct libusb_transfer *xfr;
+	
 	flg=CMD_START_FLAGS_SAMPLE_8BIT;
 	if(utc->process_context->machine_context->clk_inverted) flg|= CMD_START_FLAGS_INV_CLK;
-	struct cmd_start_acquisition cmd=
-	{
-		.flags=flg,
-		.sample_delay_h=0,
-		.sample_delay_l=0
-	};
-	rv=libusb_control_transfer(utc->device_h,0x40,CMD_START,
-			/*addr=*/0,0,
-			/*buf=*/(unsigned char*)&cmd,/*size=*/3,
-			/*timeout=*/1000/*msec*/);
-if(rv<0)
-	fprintf(stderr,"Vendor request error\n");
-else
-	printf("Starting sample data\n");
+	utc->control_buffer=malloc(64);
+	xfr = libusb_alloc_transfer(0);
+	libusb_fill_control_setup(utc->control_buffer,0x40,CMD_START,0,0,3);
+	utc->control_buffer[8]=flg;
+	utc->control_buffer[9]=0;
+	utc->control_buffer[10]=0;
 	
+	libusb_fill_control_transfer(xfr, utc->device_h, utc->control_buffer, callbackUSBTransferComplete, NULL,1000);
+	if(libusb_submit_transfer(xfr) < 0)
+		{
+		    // Error
+		    libusb_free_transfer(xfr);
+		    free(utc->control_buffer);
+		    fprintf(stderr,"USB submit control transfer error\n");
+		}
 }
 
 #define N 1024*1024
@@ -376,57 +378,67 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 	uint8_t err=0;
 	usb_transfer_context_type *utc;
 
-	utc=xfr->user_data;
-    switch(xfr->status)
-    {
-        case LIBUSB_TRANSFER_COMPLETED:
-            // Success here, data transfered are inside 
-            // xfr->buffer
-            // and the length is
-            // xfr->actual_length
-	    parse_data(utc->process_context,(void *)xfr->buffer, xfr->actual_length);
-	    if(libusb_submit_transfer(xfr) < 0)
-	    {
-			// Error
-			libusb_free_transfer(xfr);
-			free(xfr->buffer);
-			fprintf(stderr,"USB resubmit transfer error\n");
-			utc->active_transfers--;
-			err=1;
-	    }
-        break;
-        case LIBUSB_TRANSFER_CANCELLED:
-			fprintf(stderr,"USB transfer error: canceled\n");
-			err=1;
-        break;
-        case LIBUSB_TRANSFER_NO_DEVICE:
-			if(utc->usb_stop_flag!=1) fprintf(stderr,"USB transfer error: no device\n");
-			err=1;
-        break;
-        case LIBUSB_TRANSFER_TIMED_OUT:
-			fprintf(stderr,"USB transfer error: time out\n");
-	    	err=1;
-        break;
-        case LIBUSB_TRANSFER_ERROR:
-			fprintf(stderr,"USB transfer error\n");
-	    	err=1;
-        break;
-        case LIBUSB_TRANSFER_STALL:
-			fprintf(stderr,"USB transfer error: stall\n");
-	    	err=1;
-        break;
-        case LIBUSB_TRANSFER_OVERFLOW:
-			fprintf(stderr,"USB transfer error: overflow\n");
-	    	err=1;
-            break;
-    }
-	if (err && utc->usb_stop_flag==0)
+	if(xfr->user_data==NULL)  // control transfer
 	{
-		fprintf(stderr,"%d active transfers left\n", --utc->active_transfers);
-		free(xfr->buffer);
+		if(xfr->status!=LIBUSB_TRANSFER_COMPLETED)
+		{
+			fprintf(stderr,"USB controll transfer error\n");
+		}
 	}
-    if (utc->active_transfers<2) utc->usb_stop_flag=1;
-    utc->usb_transfer_cb_served=1;
+	else
+	{
+		utc=xfr->user_data;
+	    switch(xfr->status)
+	    {
+	        case LIBUSB_TRANSFER_COMPLETED:
+	            // Success here, data transfered are inside 
+	            // xfr->buffer
+	            // and the length is
+	            // xfr->actual_length
+		    parse_data(utc->process_context,(void *)xfr->buffer, xfr->actual_length);
+		    if(libusb_submit_transfer(xfr) < 0)
+		    {
+				// Error
+				libusb_free_transfer(xfr);
+				free(xfr->buffer);
+				fprintf(stderr,"USB resubmit transfer error\n");
+				utc->active_transfers--;
+				err=1;
+		    }
+	        break;
+	        case LIBUSB_TRANSFER_CANCELLED:
+				fprintf(stderr,"USB transfer error: canceled\n");
+				err=1;
+	        break;
+	        case LIBUSB_TRANSFER_NO_DEVICE:
+				if(utc->usb_stop_flag!=1) fprintf(stderr,"USB transfer error: no device\n");
+				err=1;
+	        break;
+	        case LIBUSB_TRANSFER_TIMED_OUT:
+				fprintf(stderr,"USB transfer error: time out\n");
+		    	err=1;
+	        break;
+	        case LIBUSB_TRANSFER_ERROR:
+				fprintf(stderr,"USB transfer error\n");
+		    	err=1;
+	        break;
+	        case LIBUSB_TRANSFER_STALL:
+				fprintf(stderr,"USB transfer error: stall\n");
+		    	err=1;
+	        break;
+	        case LIBUSB_TRANSFER_OVERFLOW:
+				fprintf(stderr,"USB transfer error: overflow\n");
+		    	err=1;
+	            break;
+	    }
+		if (err && utc->usb_stop_flag==0)
+		{
+			fprintf(stderr,"%d active transfers left\n", --utc->active_transfers);
+			free(xfr->buffer);
+		}
+	    if (utc->active_transfers<2) utc->usb_stop_flag=1;
+	    utc->usb_transfer_cb_served=1;
+	}
 }
 
 

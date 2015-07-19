@@ -59,6 +59,7 @@ typedef struct usb_transfer_context_struct
 	unsigned char endpoint;
 	uint8_t usb_transfer_cb_served;
 	uint8_t usb_stop_flag;
+	uint8_t *control_buffer;
 	process_context_type	*process_context;
 	
 }usb_transfer_context_type;
