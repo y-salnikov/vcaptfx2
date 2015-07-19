@@ -164,10 +164,10 @@ static void gpid_make_data_dp_state(volatile BYTE *pSTATE)
 {
 	/*
 	 * BRANCH
-	 * Branch to IDLE if condition is true, back to S2 otherwise.
+	 * Branch to IDLE if condition is true, back to S5 otherwise.
 	 * re-execute
 	 */
-	pSTATE[0] = (7 << 3) | (2 << 0) | (1 << 7);
+	pSTATE[0] = (7 << 3) | (5 << 0) | (1 << 7);
 
 	/*
 	 * OPCODE
@@ -212,7 +212,9 @@ bool gpif_acquisition_start(const struct cmd_start_acquisition *cmd)
 	/* Populate delay states. */
 		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
 		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
-		
+		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
+		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
+		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
 
 	/* Populate S2 - the decision point. */
 	gpid_make_data_dp_state(pSTATE++);
