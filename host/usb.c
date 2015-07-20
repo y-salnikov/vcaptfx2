@@ -313,7 +313,7 @@ void usb_test(usb_transfer_context_type *utc)
 	struct version_info ver;
 	uint8_t *buf;
 	int transfered=0;
-//	FILE *f;
+	FILE *f;
 	
 	rv=libusb_control_transfer(utc->device_h,0xc0,CMD_GET_FW_VERSION,
 			/*addr=*/0,0,
@@ -337,12 +337,12 @@ if(rv<0)
 	    return;
 	}
 	printf("transfered %d bytes\n", transfered);
-//	f=fopen("usb_log.dat","w");
+	f=fopen("usb_log.dat","w");
 	for(i=0;i<transfered;i++)
 	{
-//	    fprintf(f,"%c\n",buf[i]);
+	    fprintf(f,"%c\n",buf[i]);
 	}
-//	fclose(f);
+	fclose(f);
 
 }
 

@@ -8,22 +8,6 @@
 #include "compat.h"
 #include "default_config.h"
 
-const uint8_t bw_colors[16]={0x00,0x2c,0x42,0x58,0x6e,0x84,0x9a,0xb0,0x00,0x50,0x71,0x8f,0x9f,0xbf,0xe3,0xff};         // magic brightness constants for my monitor
-
-
-
-
-uint8_t convert_bw(uint8_t r, uint8_t g, uint8_t b, uint8_t y)
-{
-	uint8_t i,c;
-	i=0;
-	if(b) i+=1;
-	if(r) i+=2;
-	if(g) i+=4;
-	if(y) i+=8;
-	c=bw_colors[i];
-	return c;
-}
 
 void machine_get_area(machine_type *mac, float *x0, float *y0, float *x1, float *y1)
 {
@@ -110,12 +94,16 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 	err=0;
 	
 	mac=malloc(sizeof (machine_type));
-	if((command==2) || (command==3))	// -m
+	mac->fb_size=1024;
+	if(command & COMMAND_DUMP) return mac;
+	if(command & COMMAND_SELECT)	// -m
 	{
 		mach_index=strtol(machine_name,&endptr,0);
 		if(endptr==machine_name) mach_index=0;
 	}
-	if(command==3)						// -m -f
+	else mach_index=1;
+	
+	if(command & COMMAND_CONFIG)
 	{
 		cfg_path="";
 		cfg_filename=config_file_path;
@@ -148,7 +136,7 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 		return NULL;
 	}
 	
-	if (command==1)
+	if (command & COMMAND_LIST)
 	{
 		for(i=0;i<count;i++)
 		{
@@ -159,7 +147,7 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 			}
 			
 		}
-		return NULL;
+		if (!(command & (COMMAND_SELECT))) return NULL;
 	}
 	if (mach_index>0)    //select by index
 	{
