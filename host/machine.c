@@ -75,6 +75,77 @@ FILE *open_cfg_file(const char *PATH, const char *FILENAME)
 	return fopen(full_path,"rb");
 }
 
+int bin2int(const char *bin_str)
+{
+        int i,l,k,s;
+        s=0;
+        l=strlen(bin_str);
+        for(i=0;i<l;i++)
+        {
+                k=(1<<(l-i-1));
+                if(bin_str[i]=='1') s+=k;
+                else if(bin_str[i]!='0') return -1;
+        }
+        return s;
+
+}
+
+int get_macine_config(machine_type *mac, config_setting_t *machine)
+{
+	int err=0;
+	int i,c,m,bw;
+	const char *binstr;
+	config_setting_t *colors, *color, *area;
+	config_setting_lookup_bool(machine, "clk_inverted",&mac->clk_inverted );
+	config_setting_lookup_int(machine, "inv_bits",&mac->inv_bits);
+	config_setting_lookup_int(machine, "sync_bit_mask",&mac->sync_bit_mask);
+	config_setting_lookup_int(machine,"pixel_bits_mask",&mac->pixel_bits_mask );
+	
+	colors=config_setting_get_member(machine,"colors");
+	if (colors!=NULL) 
+		{
+			mac->colors_length=config_setting_length(colors);
+			mac->colors=calloc(mac->colors_length,sizeof(mach_colors));
+			
+			for(i=0;i<mac->colors_length;i++)
+			{
+				color=config_setting_get_elem(colors,i);
+				if (config_setting_lookup_int(color,"mask",&m)!=CONFIG_TRUE)
+				{
+					if (config_setting_lookup_string(color,"mask",&binstr)!=CONFIG_TRUE)
+					{
+						err++;
+						break;
+					}
+					m=bin2int(binstr);
+					if (m<0)
+					{
+						err++;
+						break;
+					}
+				}
+				if (!((config_setting_lookup_int(color,"color",&c)) &&
+				   (config_setting_lookup_int(color,"bw",&bw))))
+				{
+					err++;
+					break;
+				}
+				mac->colors[i].mask=( m & 0xFF);
+				mac->colors[i].R=((c & 0xFF0000) >>16);
+				mac->colors[i].G=((c & 0x00FF00) >>8);
+				mac->colors[i].B=((c & 0xFF) );
+				mac->colors[i].BW=((bw & 0xFF));
+			}
+		}
+		area=config_setting_get_member(machine,"area");
+		if(area!=NULL) 
+		{
+			if(!((config_setting_lookup_float(area,"x0",&mac->x0)) && (config_setting_lookup_float(area,"y0",&mac->y0)) && (config_setting_lookup_float(area,"x1",&mac->x1)) && (config_setting_lookup_float(area,"y1",&mac->y1)))) err++;
+		}
+		config_setting_lookup_int(machine,"framebuffer_size",&mac->fb_size);
+		
+	return err;
+}
 
 machine_type *machine_init(uint8_t command, const char* machine_name, const char* config_file_path)
 {
@@ -86,15 +157,22 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 	const char* mac_name=NULL;
 	FILE *config_file;
 	config_t cfg; 
-	config_setting_t *setting,*machine, *colors, *color, *area;
+	config_setting_t *setting,*machine, *common;
 	int count,i;
 	uint8_t found,err;
-	int c,m,bw;
+	
 
 	err=0;
 	
 	mac=malloc(sizeof (machine_type));
-	mac->fb_size=1024;
+	mac->fb_size=1024;					//default value
+	mac->colors_length=0;
+	mac->x0=mac->y0=0.0;
+	mac->x1=mac->y1=1.0;
+	mac->clk_inverted=mac->inv_bits=0;
+	mac->sync_bit_mask=0x10;
+	mac->pixel_bits_mask=0x0f;
+	
 	if(command & COMMAND_DUMP) return mac;
 	if(command & COMMAND_SELECT)	// -m
 	{
@@ -179,6 +257,7 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 		}
 	}
 
+
 	if(config_setting_lookup_string(machine, "name",&mac_name)!=CONFIG_TRUE)
 	{
 		fprintf(stderr,"machine name not found in config\n");
@@ -188,42 +267,11 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 	printf("%s  selected\n",mac_name);
 	mac->name=malloc(256);
 	strcpy(mac->name,mac_name);
-	if( (config_setting_lookup_bool(machine, "clk_inverted",&mac->clk_inverted )) && (config_setting_lookup_int(machine, "inv_bits",&mac->inv_bits)) && (config_setting_lookup_int(machine, "sync_bit_mask",&mac->sync_bit_mask)) && (config_setting_lookup_int(machine,"pixel_bits_mask",&mac->pixel_bits_mask )))
-	{
-		colors=config_setting_get_member(machine,"colors");
-		if (colors==NULL) err++;
-		else
-		{
-			mac->colors_length=config_setting_length(colors);
-			mac->colors=calloc(mac->colors_length,sizeof(mach_colors));
-			
-			for(i=0;i<mac->colors_length;i++)
-			{
-				color=config_setting_get_elem(colors,i);
-				if (!((config_setting_lookup_int(color,"mask",&m)) && (config_setting_lookup_int(color,"color",&c)) &&
-				   (config_setting_lookup_int(color,"bw",&bw))))
-				{
-					err++;
-					break;
-				}
-				mac->colors[i].mask=( m & 0xFF);
-				mac->colors[i].R=((c & 0xFF0000) >>16);
-				mac->colors[i].G=((c & 0x00FF00) >>8);
-				mac->colors[i].B=((c & 0xFF) );
-				mac->colors[i].BW=((bw & 0xFF));
-			}
-		}
-		area=config_setting_get_member(machine,"area");
-		if(area==NULL) err++;
-		else
-		{
-			if(!((config_setting_lookup_float(area,"x0",&mac->x0)) && (config_setting_lookup_float(area,"y0",&mac->y0)) && (config_setting_lookup_float(area,"x1",&mac->x1)) && (config_setting_lookup_float(area,"y1",&mac->y1)))) err++;
-		}
-	}
-	else err++;
-
 	
-	if(config_lookup_int(&cfg,"framebuffer_size",&mac->fb_size)!=CONFIG_TRUE) mac->fb_size=1024;
+	common = config_lookup(&cfg, "common");
+	if (common!=NULL) err+=get_macine_config(mac,common);
+	err+=get_macine_config(mac,machine);
+	
 	
 	if(err)
 	{
