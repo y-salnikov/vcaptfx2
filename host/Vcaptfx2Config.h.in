@@ -1,0 +1,2 @@
+#define VERSION_MAJOR @Vcaptfx2_VERSION_MAJOR@
+#define VERSION_MINOR @Vcaptfx2_VERSION_MINOR@

@@ -1,4 +1,4 @@
-#include <stdio.h>  /* For NULL... */
+#include <stdio.h> /* For NULL... */
 
 const char *vcapt_firmware[]={
 	":040000000201B9320E",

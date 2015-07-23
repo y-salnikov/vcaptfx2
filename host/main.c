@@ -14,6 +14,7 @@
 #include "machine.h"
 #include <stdlib.h>
 #include <getopt.h>
+#include "Vcaptfx2Config.h"
 
 extern const char *vcapt_firmware[];
 uint8_t usb_stop=0;
