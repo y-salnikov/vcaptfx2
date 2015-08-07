@@ -10,6 +10,7 @@
 #include "machine.h"
 #include "process.h"
 #include "no_signal.h"
+#include "no_device.h"
 
 
 
@@ -102,6 +103,7 @@ render_context_type *render_init(void *machine_context, void *process_context)
 	rc->machine_context=machine_context;
 	rc->process_context=process_context;
 	rc->no_signal_flag=0;
+	rc->no_device_flag=0;
 	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
     {
       printf ("Unable to init SDL: %s\n", SDL_GetError ());
@@ -140,6 +142,7 @@ void draw_image_in_center(render_context_type *rc, int img_width, int img_height
 void update_texture(render_context_type *rc )
 {
 	if (rc->no_signal_flag) draw_image_in_center(rc,no_signal_img.width,no_signal_img.height,no_signal_img.pixel_data);
+	if (rc->no_device_flag) draw_image_in_center(rc,no_device_img.width,no_device_img.height,no_device_img.pixel_data);
     glBindTexture(GL_TEXTURE_2D, rc->fb_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);   

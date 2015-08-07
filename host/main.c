@@ -86,6 +86,7 @@ int main(int argc, char **argv)
 	char* mach_name=NULL;
 	char* cfg_file=NULL;
 	uint8_t signal_present=100;
+
     while (1)
     {
       static struct option long_options[] =
@@ -183,7 +184,18 @@ int main(int argc, char **argv)
                         scr_l_e=0;
                     }
                 if(ev!=SCL_PRESSED) scr_l_e=1;  // SCROLL_LOCK key release
-                if(usb_get_thread_state(utc))
+				if(usb_get_thread_state(utc)==3)
+				{
+					rc->no_device_flag=1;
+					utc=usb_init(vcapt_firmware,pcont); //atempt to connect to device
+					if(utc)
+					{
+						 rc->no_device_flag=0;
+						 rc->no_signal_flag=1;
+						 signal_present=80;
+					 }
+				}
+                else if(usb_get_thread_state(utc))
                 {
 					//usb thread stopped
 					rc->no_signal_flag=1;

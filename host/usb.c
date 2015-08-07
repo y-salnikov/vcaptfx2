@@ -179,6 +179,7 @@ usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 	    if(err)
 	    {
 		fprintf(stderr,"Can't set device configuration\n");
+		free(utc);
 		return NULL;
 	    }
 
@@ -186,6 +187,7 @@ usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 	    if(err)
 	    {
 		fprintf(stderr,"Can't claim device interface\n");
+		free(utc);
 		return NULL;
 	    }
 
@@ -194,6 +196,7 @@ usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 	    if(err)
 	    {
 		fprintf(stderr,"Can't get device configuration descriptor\n");
+		free(utc);
 		return NULL;
 	    }
 	    
@@ -227,18 +230,21 @@ usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 	if (libusb_init(NULL))
 	{
 		fprintf(stderr,"libusb Init error\n");
+		free(utc);
 		return NULL;
 	}
 	utc->device_h=libusb_open_device_with_vid_pid(NULL,0xffff,0x2048);
 	if(utc->device_h==NULL)
 	{
 	    fprintf(stderr,"No reconfigured device found\n");
+	    free(utc);
 	    return NULL;
 	}
 	err=libusb_set_configuration(utc->device_h,1);
 	  if(err)
 	    {
 		fprintf(stderr,"Can't set device configuration\n");
+		free(utc);
 		return NULL;
 	    }
 
@@ -246,6 +252,7 @@ usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 	   if(err)
 	    {
 		fprintf(stderr,"Can't claim device interface\n");
+		free(utc);
 		return NULL;
 	    }
 
@@ -254,6 +261,7 @@ usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 	    if(err)
 	    {
 		fprintf(stderr,"Can't get device configuration descriptor\n");
+		free(utc);
 		return NULL;
 	    }
 	
@@ -352,7 +360,7 @@ void usb_start_transfer (usb_transfer_context_type *utc)
     uint8_t i;
     uint8_t *usb_buf;
     struct libusb_transfer *xfr;
-    
+    if (utc==NULL) return;
     usb_send_start_cmd(utc);
     for(i=0;i<N_OF_TRANSFERS;i++)
     {
@@ -454,6 +462,7 @@ int usb_thread_function(void *utc_ptr)
 {
 	usb_transfer_context_type *utc;
 	utc=utc_ptr;
+	if(utc==NULL) return 0;
 	usb_start_transfer(utc);
 	utc->usb_stop_flag=0;
 	while(!utc->usb_stop_flag)
@@ -467,6 +476,14 @@ int usb_thread_function(void *utc_ptr)
 
 uint8_t usb_get_thread_state(usb_transfer_context_type *utc)
 {
+	if(utc==NULL) return 3;
+	if(libusb_claim_interface(utc->device_h,0))
+	{
+		free(utc);
+		utc=NULL;
+		return 3;
+	}
+	
 	return utc->usb_stop_flag;
 }
 
