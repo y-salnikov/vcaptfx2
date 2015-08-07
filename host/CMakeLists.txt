@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 project (Vcaptfx2)
 # The version number.
 set (Vcaptfx2_VERSION_MAJOR 1)
-set (Vcaptfx2_VERSION_MINOR 0.3)
+set (Vcaptfx2_VERSION_MINOR 0.4)
 set (TARGET vcaptfx2)
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -pipe -Wall")
 #set_directory_properties(PROPERTY ADDITIONAL_MAKE_CLEAN_FILES vcapt_hex.c)
@@ -20,7 +20,7 @@ set(SOURCE_FILES main.c compat.c usb.c process.c render.c machine.c vcapt_hex.c 
 # to the source code
 configure_file (
   "${PROJECT_SOURCE_DIR}/Vcaptfx2Config.h.in"
-  "${PROJECT_BINARY_DIR}/Vcaptfx2Config.h"
+  "${PROJECT_SOURCE_DIR}/Vcaptfx2Config.h"
   )
  
 # add the binary tree to the search path for include files

@@ -67,6 +67,7 @@ void print_help(void)
 	printf("--config  : Config file to use. Will be created if not exist.\n");
 	printf("          : default config file will be writen at  %s\n", get_config_file_path());
 	printf("First machine profile in config will be used if no --machine or -m options passed.\n");
+	printf("Version: %d.%1.1f\n",VERSION_MAJOR,VERSION_MINOR);
 	exit(0);
 }
 
