@@ -12,8 +12,8 @@ I have:  R - PB0,  G - PB1, B - PB2, L - PB3,   S - PB4, clk - ifclk.
 As firmware for FX2 chip used slightly modified fx2lafw version from sigrok project. http://sigrok.org
 The ifclk pin now input, eliminated wait states so each clock pulse now sample data. 
 Host side software uses libusb to acquire data from FX2 and render image using OpenGL.
-It is written for GNU/Linux but should be easy to port.
 Default config represets my few computers: МС-0511(УКНЦ), БК0010-01 and КР-05 (zx-spectrum clone), it 
 will be written to ~/.config/vcaptfx2
 
 Windows note: You need to install libusb backend. Default config will be written to %USERPROFILE%\AppData\Local\vcaptfx2\
+You should edit host/mingw32_cross-compile.cmake to correct path to your windows toolchain.
