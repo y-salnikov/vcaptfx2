@@ -9,7 +9,7 @@
 #include "compat.h"
 #include "machine.h"
 #include "process.h"
-
+#include "no_signal.h"
 
 
 
@@ -101,7 +101,7 @@ render_context_type *render_init(void *machine_context, void *process_context)
 	rc=malloc(sizeof(render_context_type));
 	rc->machine_context=machine_context;
 	rc->process_context=process_context;
-	
+	rc->no_signal_flag=0;
 	if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
     {
       printf ("Unable to init SDL: %s\n", SDL_GetError ());
@@ -117,10 +117,29 @@ void render_done(render_context_type *rc)
 	free(rc);
 }
 
-
-void update_texture( render_context_type *rc)
+void draw_image_in_center(render_context_type *rc, int img_width, int img_height, const unsigned char *img_pixels)
 {
+	int x0,y0,x,y;
     
+    {
+		x0=((rc->process_context->machine_context->fb_size)*(rc->machine_context->x0+rc->machine_context->x1)/2)-(img_width/2);
+		y0=((rc->process_context->machine_context->fb_size)*(rc->machine_context->y0+rc->machine_context->y1)/2)-(img_height/2);
+		for(y=0;y<img_height;y++)
+			for(x=0;x<img_width;x++)
+			{
+				rc->process_context->framebuf[x0+x+(rc->process_context->machine_context->fb_size*(y+y0))].R=img_pixels[4*(x+y*img_width)];
+				rc->process_context->framebuf[x0+x+(rc->process_context->machine_context->fb_size*(y+y0))].G=img_pixels[4*(x+y*img_width)+1];
+				rc->process_context->framebuf[x0+x+(rc->process_context->machine_context->fb_size*(y+y0))].B=img_pixels[4*(x+y*img_width)+2];
+				rc->process_context->framebuf[x0+x+(rc->process_context->machine_context->fb_size*(y+y0))].A=img_pixels[4*(x+y*img_width)+3];
+			}
+	}
+}
+
+
+
+void update_texture(render_context_type *rc )
+{
+	if (rc->no_signal_flag) draw_image_in_center(rc,no_signal_img.width,no_signal_img.height,no_signal_img.pixel_data);
     glBindTexture(GL_TEXTURE_2D, rc->fb_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);   

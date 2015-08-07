@@ -329,7 +329,7 @@ if(rv<0)
 	profile_start();
 	usb_send_start_cmd(utc);
 	profile_check("usb_send_start_cmd");
-	rv=libusb_bulk_transfer(utc->device_h,utc->endpoint,(unsigned char *)buf,N,&transfered,1000);
+	rv=libusb_bulk_transfer(utc->device_h,utc->endpoint,(unsigned char *)buf,N,&transfered,200);
 	profile_check("bulk_transfer");
 	if(rv<0)
 	{
@@ -358,7 +358,7 @@ void usb_start_transfer (usb_transfer_context_type *utc)
     {
 		usb_buf=malloc(USB_BUF_SIZE);
 		xfr = libusb_alloc_transfer(0);
-		libusb_fill_bulk_transfer(xfr, utc->device_h, utc->endpoint, usb_buf, USB_BUF_SIZE, callbackUSBTransferComplete, utc, 1000 );
+		libusb_fill_bulk_transfer(xfr, utc->device_h, utc->endpoint, usb_buf, USB_BUF_SIZE, callbackUSBTransferComplete, utc, 200 );
 	    
 		if(libusb_submit_transfer(xfr) < 0)
 		{

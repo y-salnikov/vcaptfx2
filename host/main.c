@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 	uint8_t test=0;
 	char* mach_name=NULL;
 	char* cfg_file=NULL;
-
+	uint8_t signal_present=100;
     while (1)
     {
       static struct option long_options[] =
@@ -160,10 +160,7 @@ int main(int argc, char **argv)
 	if (mac==NULL) exit(3);
     pcont=process_init(mac);
     utc=usb_init(vcapt_firmware,pcont);
-    if(utc==NULL)
-	{
-		exit(1);
-	}
+    
 	if(test)
 	{
 		usb_test(utc);
@@ -188,8 +185,18 @@ int main(int argc, char **argv)
                 if(ev!=SCL_PRESSED) scr_l_e=1;  // SCROLL_LOCK key release
                 if(usb_get_thread_state(utc))
                 {
-					stop=1;
-					fprintf(stderr,"USB thread stopped. 0x%X\n",usb_get_thread_state(utc));
+					//usb thread stopped
+					rc->no_signal_flag=1;
+					signal_present=0;
+					SDL_CreateThread(usb_thread_function,utc);          //atempting to restart usb_transfer
+				}
+				else
+				{
+					if (signal_present>99)
+					{
+						rc->no_signal_flag=0;
+					}
+					else signal_present++;
 				}
 				video_output(rc);
             }

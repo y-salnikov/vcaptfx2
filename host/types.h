@@ -45,6 +45,7 @@ typedef struct render_context_struct
 	void *sdl_surface;
 	unsigned int fb_texture;
 	float tx0,ty0,tx1,ty1;
+	uint8_t no_signal_flag;
 	machine_type *machine_context;
 	process_context_type *process_context;
 	
