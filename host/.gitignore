@@ -1,8 +1,0 @@
-*.o
-vcaptfx2
-CMakeFiles
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-build
-build_win32
