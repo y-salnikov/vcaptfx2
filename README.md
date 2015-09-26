@@ -17,3 +17,5 @@ will be written to ~/.config/vcaptfx2
 
 Windows note: You need to install libusb backend. Default config will be written to %USERPROFILE%\AppData\Local\vcaptfx2\
 You should edit host/mingw32_cross-compile.cmake to correct path to your windows toolchain.
+
+[Hardware description (rus)]{http://y-salnikov.github.io/vcaptfx2/}
