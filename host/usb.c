@@ -166,7 +166,7 @@ usb_transfer_context_type*  usb_init(const char **firmware, void *proc_cont)
 	utc->usb_transfer_cb_served=0;
 	utc->usb_stop_flag=2;   // 0 -running, 1-stoppes, 2-not inited
 	utc->process_context=proc_cont;
-	utc->device_h=libusb_open_device_with_vid_pid(NULL,0x04b4,0x8613);
+	utc->device_h=libusb_open_device_with_vid_pid(NULL,utc->process_context->machine_context->vid,utc->process_context->machine_context->pid);
 	if(utc->device_h==NULL)
 	{
 	    fprintf(stderr,"No device found or device already configured.\n");

@@ -25,6 +25,8 @@ typedef struct machine_struct
 	mach_colors *colors;
 	int colors_length;
 	double x0,y0,x1,y1;
+	int	vid;
+	int pid;
 }machine_type;
 
 

@@ -100,7 +100,8 @@ int get_macine_config(machine_type *mac, config_setting_t *machine)
 	config_setting_lookup_int(machine, "inv_bits",&mac->inv_bits);
 	config_setting_lookup_int(machine, "sync_bit_mask",&mac->sync_bit_mask);
 	config_setting_lookup_int(machine,"pixel_bits_mask",&mac->pixel_bits_mask );
-	
+	config_setting_lookup_int(machine,"vid",&mac->vid );
+	config_setting_lookup_int(machine,"pid",&mac->pid );
 	colors=config_setting_get_member(machine,"colors");
 	if (colors!=NULL) 
 		{
@@ -172,6 +173,8 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 	mac->clk_inverted=mac->inv_bits=0;
 	mac->sync_bit_mask=0x10;
 	mac->pixel_bits_mask=0x0f;
+	mac->vid=0x04b4;
+	mac->pid=0x8613;
 	
 	if(command & COMMAND_DUMP) return mac;
 	if(command & COMMAND_SELECT)	// -m
