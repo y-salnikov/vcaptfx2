@@ -362,11 +362,11 @@ void usb_start_transfer (usb_transfer_context_type *utc)
     struct libusb_transfer *xfr;
     if (utc==NULL) return;
     usb_send_start_cmd(utc);
-    for(i=0;i<N_OF_TRANSFERS;i++)
+    for(i=0;i<utc->process_context->machine_context->N_OF_TRANSFERS;i++)
     {
-		usb_buf=malloc(USB_BUF_SIZE);
+		usb_buf=malloc(utc->process_context->machine_context->USB_BUF_SIZE);
 		xfr = libusb_alloc_transfer(0);
-		libusb_fill_bulk_transfer(xfr, utc->device_h, utc->endpoint, usb_buf, USB_BUF_SIZE, callbackUSBTransferComplete, utc, 200 );
+		libusb_fill_bulk_transfer(xfr, utc->device_h, utc->endpoint, usb_buf, utc->process_context->machine_context->USB_BUF_SIZE, callbackUSBTransferComplete, utc, 200 );
 	    
 		if(libusb_submit_transfer(xfr) < 0)
 		{

@@ -5,6 +5,8 @@ common:\n\
 {\n\
 	vid=0x04b4;						#vid/pid\n\
 	pid=0x8613;\n\
+	usb_buf_size=8192;\n\
+	usb_transfers=15;\n\
 	framebuffer_size=1024;			#framebuffer size is 1024x1024\n\
 	clk_inverted=true;\n\
 	sync_bit_mask=0x10;		# which bit is sync\n\

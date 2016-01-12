@@ -102,6 +102,8 @@ int get_macine_config(machine_type *mac, config_setting_t *machine)
 	config_setting_lookup_int(machine,"pixel_bits_mask",&mac->pixel_bits_mask );
 	config_setting_lookup_int(machine,"vid",&mac->vid );
 	config_setting_lookup_int(machine,"pid",&mac->pid );
+	config_setting_lookup_int(machine,"usb_buf_size",&mac->USB_BUF_SIZE );
+	config_setting_lookup_int(machine,"usb_transfers",&mac->N_OF_TRANSFERS );
 	colors=config_setting_get_member(machine,"colors");
 	if (colors!=NULL) 
 		{
@@ -175,6 +177,8 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 	mac->pixel_bits_mask=0x0f;
 	mac->vid=0x04b4;
 	mac->pid=0x8613;
+	mac->USB_BUF_SIZE=8192;
+	mac->N_OF_TRANSFERS=15;
 	
 	if(command & COMMAND_DUMP) return mac;
 	if(command & COMMAND_SELECT)	// -m

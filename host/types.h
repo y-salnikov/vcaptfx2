@@ -27,6 +27,8 @@ typedef struct machine_struct
 	double x0,y0,x1,y1;
 	int	vid;
 	int pid;
+	int USB_BUF_SIZE;
+	int N_OF_TRANSFERS;
 }machine_type;
 
 

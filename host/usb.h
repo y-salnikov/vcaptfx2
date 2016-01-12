@@ -6,7 +6,6 @@ uint8_t usb_get_thread_state(usb_transfer_context_type *utc);
 int usb_thread_function(void *utc_ptr);
 void usb_stop_thread(usb_transfer_context_type *utc);
 
-#define USB_BUF_SIZE 256*1024
-#define N_OF_TRANSFERS 5
+
 
 
