@@ -366,7 +366,7 @@ void usb_start_transfer (usb_transfer_context_type *utc)
     {
 		usb_buf=malloc(utc->process_context->machine_context->USB_BUF_SIZE);
 		xfr = libusb_alloc_transfer(0);
-		libusb_fill_bulk_transfer(xfr, utc->device_h, utc->endpoint, usb_buf, utc->process_context->machine_context->USB_BUF_SIZE, callbackUSBTransferComplete, utc, 200 );
+		libusb_fill_bulk_transfer(xfr, utc->device_h, utc->endpoint, usb_buf, utc->process_context->machine_context->USB_BUF_SIZE, callbackUSBTransferComplete, utc, utc->process_context->machine_context->usb_timeout );
 	    
 		if(libusb_submit_transfer(xfr) < 0)
 		{

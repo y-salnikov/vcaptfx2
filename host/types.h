@@ -29,6 +29,7 @@ typedef struct machine_struct
 	int pid;
 	int USB_BUF_SIZE;
 	int N_OF_TRANSFERS;
+	int usb_timeout;
 }machine_type;
 
 
