@@ -178,7 +178,7 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 	mac->pixel_bits_mask=0x0f;
 	mac->vid=0x04b4;
 	mac->pid=0x8613;
-	mac->USB_BUF_SIZE=819200;
+	mac->USB_BUF_SIZE=16384;
 	mac->N_OF_TRANSFERS=15;
 	mac->usb_timeout=200;
 	

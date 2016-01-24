@@ -467,8 +467,7 @@ int usb_thread_function(void *utc_ptr)
 	utc->usb_stop_flag=0;
 	while(!utc->usb_stop_flag)
 	{
-		utc->usb_transfer_cb_served=1;
-		while(utc->usb_transfer_cb_served)	usb_poll();
+		usb_poll();
 		SLEEP(1);
 	}
 	return 0;
