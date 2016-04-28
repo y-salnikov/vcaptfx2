@@ -90,21 +90,50 @@ int bin2int(const char *bin_str)
 
 }
 
+static unsigned int to_bytes_per_ms(unsigned int samplerate)
+{
+	return samplerate / 1000;
+}
+
 int get_macine_config(machine_type *mac, config_setting_t *machine)
 {
 	int err=0;
 	int i,c,m,bw;
 	const char *binstr;
 	config_setting_t *colors, *color, *area;
+	size_t s;
+	size_t total_size;
+	unsigned int timeout;
+	
 	config_setting_lookup_bool(machine, "clk_inverted",&mac->clk_inverted );
 	config_setting_lookup_int(machine, "inv_bits",&mac->inv_bits);
 	config_setting_lookup_int(machine, "sync_bit_mask",&mac->sync_bit_mask);
 	config_setting_lookup_int(machine,"pixel_bits_mask",&mac->pixel_bits_mask );
 	config_setting_lookup_int(machine,"vid",&mac->vid );
 	config_setting_lookup_int(machine,"pid",&mac->pid );
-	config_setting_lookup_int(machine,"usb_buf_size",&mac->USB_BUF_SIZE );
-	config_setting_lookup_int(machine,"usb_transfers",&mac->N_OF_TRANSFERS );
-	config_setting_lookup_int(machine,"usb_timeout",&mac->usb_timeout );
+	config_setting_lookup_int(machine,"usb_freq",&mac->freq );
+
+	/*
+	 * The buffer should be large enough to hold 10ms of data and
+	 * a multiple of 512.  (from sigrok)
+	 */
+	 
+	s = 10 * to_bytes_per_ms(mac->freq);
+	mac->USB_BUF_SIZE=(s + 511) & ~511;
+
+	/* Total buffer size should be able to hold about 500ms of data. */
+	mac->N_OF_TRANSFERS = (500 * to_bytes_per_ms(mac->freq)) / mac->USB_BUF_SIZE;
+
+	if ( mac->N_OF_TRANSFERS > 32)
+		mac->N_OF_TRANSFERS=32;
+
+	
+
+	total_size = mac->USB_BUF_SIZE * mac->N_OF_TRANSFERS;
+	timeout = total_size / to_bytes_per_ms(mac->freq);
+	mac->usb_timeout=(timeout + timeout / 4); /* Leave a headroom of 25% percent. */
+	
+	
 	colors=config_setting_get_member(machine,"colors");
 	if (colors!=NULL) 
 		{
@@ -151,6 +180,9 @@ int get_macine_config(machine_type *mac, config_setting_t *machine)
 	return err;
 }
 
+
+
+
 machine_type *machine_init(uint8_t command, const char* machine_name, const char* config_file_path)
 {
 	char *endptr=NULL;
@@ -178,10 +210,10 @@ machine_type *machine_init(uint8_t command, const char* machine_name, const char
 	mac->pixel_bits_mask=0x0f;
 	mac->vid=0x04b4;
 	mac->pid=0x8613;
-	mac->USB_BUF_SIZE=16384;
-	mac->N_OF_TRANSFERS=15;
-	mac->usb_timeout=200;
-	
+//	mac->USB_BUF_SIZE=16384;
+//	mac->N_OF_TRANSFERS=15;
+//	mac->usb_timeout=200;
+	mac->freq=12000000;
 	if(command & COMMAND_DUMP) return mac;
 	if(command & COMMAND_SELECT)	// -m
 	{

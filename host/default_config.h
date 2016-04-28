@@ -5,9 +5,7 @@ common:\n\
 {\n\
 	vid=0x04b4;						#vid/pid\n\
 	pid=0x8613;\n\
-	usb_buf_size=16384;\n\
-	usb_transfers=15;\n\
-	usb_timeout=200;\n\
+	usb_freq=12000000;\n\
 	framebuffer_size=1024;			#framebuffer size is 1024x1024\n\
 	clk_inverted=true;\n\
 	sync_bit_mask=0x10;		# which bit is sync\n\
@@ -41,6 +39,7 @@ machines:\n\
 	{\n\
 		name=\"MS-0511\";\n\
 		inv_bits=0x0f;\n\
+		usb_freq=12500000;\n\
 		area={ x0=0.07; y0=0.01; x1=0.7; y1=0.3; }\n\
 	},\n\
 	{\n\
@@ -71,6 +70,7 @@ machines:\n\
 \n\
 		clk_inverted=true;			\n\
 		inv_bits=0x00;			# will be xored with input data\n\
+		usb_freq=8000000;\n\
 		area={ x0=0.048; y0=0.035; x1=0.34; y1=0.245; }\n\
 		\n\
 	}\n\

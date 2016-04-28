@@ -30,6 +30,7 @@ typedef struct machine_struct
 	int USB_BUF_SIZE;
 	int N_OF_TRANSFERS;
 	int usb_timeout;
+	int freq;
 }machine_type;
 
 
@@ -68,6 +69,7 @@ typedef struct usb_transfer_context_struct
 	uint8_t usb_stop_flag;
 	uint8_t *control_buffer;
 	process_context_type	*process_context;
+	uint8_t *tmp_buffer;
 	
 }usb_transfer_context_type;
 

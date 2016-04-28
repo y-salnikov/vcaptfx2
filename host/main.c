@@ -165,7 +165,7 @@ int main(int argc, char **argv)
     
 	if(test)
 	{
-		usb_test(utc);
+//		usb_test(utc);
 		exit(0);
 	}
     rc=render_init(mac,pcont);
@@ -193,7 +193,7 @@ int main(int argc, char **argv)
 					{
 						 rc->no_device_flag=0;
 						 rc->no_signal_flag=1;
-						 signal_present=80;
+						 signal_present=90;
 					 }
 				}
                 else if(usb_get_thread_state(utc))
