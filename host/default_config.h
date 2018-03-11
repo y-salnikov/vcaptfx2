@@ -1,4 +1,4 @@
-const char *config_txt={"\
+const char* config_txt = {"\
 \n\
 #common parameters for all machine profiles\n\
 common:\n\
@@ -75,4 +75,5 @@ machines:\n\
 		\n\
 	}\n\
 )\n\
-"};
+"
+                         };
