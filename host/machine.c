@@ -176,7 +176,10 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
         }
     }
 
-    config_setting_lookup_int(machine, "framebuffer_size", &mac->fb_size);
+    config_setting_lookup_int(machine, "framebuffer_width", &mac->fb_width);
+    config_setting_lookup_int(machine, "horizontal_skip", &mac->skip_h);
+    config_setting_lookup_int(machine, "framebuffer_height", &mac->fb_height);
+    config_setting_lookup_int(machine, "vertical_skip", &mac->skip_v);
 
     return err;
 }
@@ -198,7 +201,8 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     err = 0;
 
     mac = malloc(sizeof (machine_type));
-    mac->fb_size = 1024; //default value
+    mac->fb_width  = 1024; //default value
+    mac->fb_height = 1024; //default value
     mac->colors_length = 0;
     mac->x0 = mac->y0 = 0.0;
     mac->x1 = mac->y1 = 1.0;

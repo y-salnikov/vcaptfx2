@@ -12,8 +12,8 @@
 #include "no_signal.h"
 #include "no_device.h"
 
-#define WINDOW_W 1291 // 640 * 2
-#define WINDOW_H 891  // 288 * 3
+#define WINDOW_W 640 * 2
+#define WINDOW_H 288 * 3
 #define RATIO ((float)WINDOW_W / (float)WINDOW_H)
 
 void set_perspective(void)
@@ -114,15 +114,17 @@ void draw_centered_image(render_context_type* rc, int img_width, int img_height,
                          const unsigned char* img_pixels) // {{{
 {
     int x0, y0;
-    int fb_size = rc->process_context->machine_context->fb_size;
-    x0 = (fb_size * (rc->machine_context->x0 + rc->machine_context->x1) / 2) - (img_width / 2);
-    y0 = (fb_size * (rc->machine_context->y0 + rc->machine_context->y1) / 2) - (img_height / 2);
+    int fb_width  = rc->process_context->machine_context->fb_width;
+    int fb_height = rc->process_context->machine_context->fb_height;
+    x0 = (fb_width  * (rc->machine_context->x0 + rc->machine_context->x1) / 2) - (img_width / 2);
+    y0 = (fb_height * (rc->machine_context->y0 + rc->machine_context->y1) / 2) - (img_height / 2);
 
+    int x, y, pixel_idx;
     px* fb_pixel;
-    for (int y = 0; y < img_height; y++)
-        for (int x = 0; x < img_width; x++) {
-            int pixel_idx = 4 * (img_width * y + x);
-            fb_pixel = &rc->process_context->framebuf[x0 + x + (fb_size * (y + y0))];
+    for (y = 0; y < img_height; y++)
+        for (x = 0; x < img_width; x++) {
+            pixel_idx = (img_width * y + x) * 4;
+            fb_pixel = &rc->process_context->framebuf[(fb_width * (y + y0)) + x0 + x];
             fb_pixel->R = img_pixels[pixel_idx];
             fb_pixel->G = img_pixels[pixel_idx + 1];
             fb_pixel->B = img_pixels[pixel_idx + 2];
@@ -139,34 +141,69 @@ void update_texture(render_context_type* rc )
     glBindTexture(GL_TEXTURE_2D, rc->fb_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    int fb_size = rc->process_context->machine_context->fb_size;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_size, fb_size, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                 rc->process_context->framebuf);
+
+    int fb_width = rc->process_context->machine_context->fb_width;
+    int fb_height = rc->process_context->machine_context->fb_height;
+    int out_fb_width  = fb_width * 2;
+
+    px* framebuf = rc->process_context->framebuf;
+    px* out_framebuf = rc->process_context->out_framebuf;
+    px current_pixel;
+    const px black_pixel = { .R = 0, .G = 0, .B = 0, .A = 0 };
+
+    int x, y, dst_x;
+    int l0, l1, l2;
+    for (y = 0; y < fb_height; y++)
+        for (x = 0; x < fb_width; x++)
+        {
+            current_pixel = framebuf[fb_width * y + x];
+            dst_x = x * 2;
+            l0 = y * 3 * out_fb_width;
+            l1 = l0 + out_fb_width;
+            l2 = l1 + out_fb_width;
+            out_framebuf[l0 + dst_x + 0] = current_pixel;
+            out_framebuf[l0 + dst_x + 1] = current_pixel;
+            out_framebuf[l1 + dst_x + 0] = current_pixel;
+            out_framebuf[l1 + dst_x + 1] = current_pixel;
+            out_framebuf[l2 + dst_x + 0] = black_pixel;
+            out_framebuf[l2 + dst_x + 1] = black_pixel;
+        }
+
+    glTexImage2D(
+            GL_TEXTURE_2D, // target
+            0, // level
+            GL_RGBA, // internalFormat
+            fb_width * 2, // width
+            fb_height * 3, // height
+            0, // border
+            GL_RGBA, // format
+            GL_UNSIGNED_BYTE, // type
+            out_framebuf // data
+            );
 }
 
 void show_frame(render_context_type* rc) //{{{
 {
     glLoadIdentity();
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
-            GL_STENCIL_BUFFER_BIT); // очистка буферов
+    // очистка буферов
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_TEXTURE_2D);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
     update_texture(rc);
 
     glBegin(GL_QUADS);
+      glTexCoord2f(rc->tx0, rc->ty1);
+      glVertex2f(0.0, 0.0);
 
-    glTexCoord2f(rc->tx0, rc->ty1);
-    glVertex2f(0.0, 0.0);
+      glTexCoord2f(rc->tx1, rc->ty1);
+      glVertex2f(1.0, 0.0);
 
-    glTexCoord2f(rc->tx1, rc->ty1);
-    glVertex2f(1.0, 0.0);
+      glTexCoord2f(rc->tx1, rc->ty0);
+      glVertex2f(1.0, 1.0);
 
-    glTexCoord2f(rc->tx1, rc->ty0);
-    glVertex2f(1.0, 1.0);
-
-    glTexCoord2f(rc->tx0, rc->ty0);
-    glVertex2f(0.0, 1.0);
+      glTexCoord2f(rc->tx0, rc->ty0);
+      glVertex2f(0.0, 1.0);
     glEnd();
 
     glFlush();

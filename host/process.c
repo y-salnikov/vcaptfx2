@@ -14,11 +14,12 @@ process_context_type* process_init(machine_type* mac)
     prc->cur_line = 0;
     prc->cur_px = 0;
     prc->machine_context = mac;
-    prc->framebuf = calloc(mac->fb_size * mac->fb_size, sizeof(px));
+    prc->framebuf = calloc(mac->fb_width * mac->fb_height, sizeof(px));
+    prc->out_framebuf = calloc((mac->fb_width * 2) * (mac->fb_height * 3), sizeof(px));
 
     if (prc->framebuf == NULL) {
         fprintf(stderr, "Can't allocate %lu bytes of memory.",
-                (long unsigned int)mac->fb_size * mac->fb_size * sizeof(px));
+                (long unsigned int)mac->fb_width * mac->fb_height * sizeof(px));
         exit(1);
     }
 
@@ -36,14 +37,17 @@ void next_pixel(process_context_type* prc, uint8_t d)
     uint32_t index;
     machine_type* mac;
     mac = prc->machine_context;
-    index = ((prc->cur_line * mac->fb_size) + prc->cur_px);
-    extract_color(mac, d, &prc->framebuf[index].R,
-                  &prc->framebuf[index].G,
-                  &prc->framebuf[index].B);
-    prc->framebuf[index].A = 0;
+    if ((prc->cur_line >= mac->skip_v) && (prc->cur_px >= mac->skip_h))
+    {
+        index = ((mac->fb_width * (prc->cur_line - mac->skip_v)) + prc->cur_px - mac->skip_h);
+        extract_color(mac, d, &prc->framebuf[index].R,
+                              &prc->framebuf[index].G,
+                              &prc->framebuf[index].B);
+        prc->framebuf[index].A = 0;
+    }
 
-    if (prc->cur_px < mac->fb_size) {
-        prc->cur_px += 1;
+    if (prc->cur_px < mac->fb_width + mac->skip_h) {
+        prc->cur_px++;
     }
 }
 
@@ -96,7 +100,7 @@ void parse_data(process_context_type* prc, uint8_t* buf, uint32_t length)
     for (i = 0; i < length; i++) {
         c = buf[i];
 
-        if (h_detect(prc->machine_context, c) && (prc->cur_line < prc->machine_context->fb_size)) {
+        if (h_detect(prc->machine_context, c) && ((prc->cur_line - prc->machine_context->skip_v) < prc->machine_context->fb_height)) {
             prc->cur_px = 0;
             prc->cur_line++;
         }
