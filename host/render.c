@@ -12,9 +12,9 @@
 #include "no_signal.h"
 #include "no_device.h"
 
-#define WINDOW_W 800
-#define WINDOW_H 600
-#define RATIO 4.0/3.0
+#define WINDOW_W 1291 // 640 * 2
+#define WINDOW_H 891  // 288 * 3
+#define RATIO ((float)WINDOW_W / (float)WINDOW_H)
 
 void set_perspective(void)
 {
@@ -85,6 +85,7 @@ void init_opengl(render_context_type* rc)
     set_perspective();
 }
 
+
 render_context_type* render_init(void* machine_context, void* process_context)
 {
     render_context_type* rc;
@@ -113,15 +114,19 @@ void draw_centered_image(render_context_type* rc, int img_width, int img_height,
                          const unsigned char* img_pixels) // {{{
 {
     int x0, y0;
-    x0 = (rc->process_context->machine_context->fb_size * (rc->machine_context->x0 + rc->machine_context->x1) / 2) - (img_width / 2);
-    y0 = (rc->process_context->machine_context->fb_size * (rc->machine_context->y0 + rc->machine_context->y1) / 2) - (img_height / 2);
+    int fb_size = rc->process_context->machine_context->fb_size;
+    x0 = (fb_size * (rc->machine_context->x0 + rc->machine_context->x1) / 2) - (img_width / 2);
+    y0 = (fb_size * (rc->machine_context->y0 + rc->machine_context->y1) / 2) - (img_height / 2);
 
+    px* fb_pixel;
     for (int y = 0; y < img_height; y++)
         for (int x = 0; x < img_width; x++) {
-            rc->process_context->framebuf[x0 + x + (rc->process_context->machine_context->fb_size * (y + y0))].R = img_pixels[4 * (img_width * y + x)];
-            rc->process_context->framebuf[x0 + x + (rc->process_context->machine_context->fb_size * (y + y0))].G = img_pixels[4 * (img_width * y + x) + 1];
-            rc->process_context->framebuf[x0 + x + (rc->process_context->machine_context->fb_size * (y + y0))].B = img_pixels[4 * (img_width * y + x) + 2];
-            rc->process_context->framebuf[x0 + x + (rc->process_context->machine_context->fb_size * (y + y0))].A = img_pixels[4 * (img_width * y + x) + 3];
+            int pixel_idx = 4 * (img_width * y + x);
+            fb_pixel = &rc->process_context->framebuf[x0 + x + (fb_size * (y + y0))];
+            fb_pixel->R = img_pixels[pixel_idx];
+            fb_pixel->G = img_pixels[pixel_idx + 1];
+            fb_pixel->B = img_pixels[pixel_idx + 2];
+            fb_pixel->A = img_pixels[pixel_idx + 3];
         }
 } // }}}
 
@@ -132,9 +137,10 @@ void update_texture(render_context_type* rc )
     if (rc->no_device_flag)
         draw_centered_image(rc, no_device_img.width, no_device_img.height, no_device_img.pixel_data);
     glBindTexture(GL_TEXTURE_2D, rc->fb_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rc->process_context->machine_context->fb_size, rc->process_context->machine_context->fb_size, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+    int fb_size = rc->process_context->machine_context->fb_size;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_size, fb_size, 0, GL_RGBA, GL_UNSIGNED_BYTE,
                  rc->process_context->framebuf);
 }
 
