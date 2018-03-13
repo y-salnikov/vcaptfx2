@@ -1,4 +1,5 @@
 #include "libusb.h"
+#include "SDL.h"
 
 typedef struct px {
     uint8_t R, G, B, A;
@@ -15,8 +16,8 @@ typedef struct machine_struct {
     int fb_height;
     int sb_width;
     int sb_height;
-    int h_counter_start;
-    int v_counter_start;
+    int h_counter_shift;
+    int v_counter_shift;
     uint8_t color_mode;
     char* name;
     int clk_inverted;
@@ -25,7 +26,6 @@ typedef struct machine_struct {
     int pixel_bits_mask;
     mach_colors* colors;
     int colors_length;
-    double x0, y0, x1, y1;
     int vid;
     int pid;
     int USB_BUF_SIZE;
@@ -44,9 +44,8 @@ typedef struct process_context_struct {
 
 
 typedef struct render_context_struct {
-    void* sdl_surface;
+    SDL_Surface* sdl_surface;
     unsigned int fb_texture;
-    float tx0, ty0, tx1, ty1;
     uint8_t no_signal_flag;
     uint8_t no_device_flag;
     machine_type* machine_context;

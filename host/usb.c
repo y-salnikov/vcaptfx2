@@ -478,7 +478,7 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer* xfr)
 }
 
 
-void usb_poll(void)                     // need to be periodicaly called
+void usb_poll(void) // need to be periodicaly called
 {
     struct timeval tv;
     tv.tv_sec = tv.tv_usec = 0;

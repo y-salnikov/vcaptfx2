@@ -7,9 +7,9 @@ common:\n\
     pid=0x8613;\n\
     usb_freq=12000000;\n\
     framebuffer_width=640;\n\
-    horizontal_skip=-73;\n\
     framebuffer_height=288;\n\
-    vertical_skip=-17;\n\
+    h_counter_shift=-73;\n\
+    v_counter_shift=-17;\n\
     clk_inverted=true;\n\
     sync_bit_mask=0x10;   # which bit is sync\n\
     inv_bits=0x00;        # will be xored with input data\n\
@@ -32,7 +32,6 @@ common:\n\
             { mask=\"1011\"; color=0xFFFF00; bw=0xe3},\n\
             { mask=\"1111\"; color=0xFFFFFF; bw=0xff}\n\
             );\n\
-    area={ x0=0.00; y0=0.00; x1=1.0; y1=1.0; }    # define rectangle area of raster that will be shown. Full framebuffer size is 1.0 x 1.0\n\
 }\n\
 \n\
 # individual machine settings override common\n\
@@ -43,7 +42,6 @@ machines:\n\
         name=\"MS-0511\";\n\
         inv_bits=0x0f;\n\
         usb_freq=12500000;\n\
-        area={ x0=0.0; y0=1.0; x1=0.0; y1=1.0; }\n\
     },\n\
     {\n\
         name=\"BK0010-01\";            \n\
@@ -66,7 +64,6 @@ machines:\n\
                 { mask=0x0B; color=0xFFFF00; bw=0xFF},\n\
                 { mask=0x0F; color=0xFFFFFF; bw=0xFF}\n\
                 );\n\
-        area={ x0=0.115; y0=0.035; x1=0.63; y1=0.29; }\n\
     },\n\
     {\n\
         name=\"ZX-Spectrum\";            \n\
@@ -74,9 +71,8 @@ machines:\n\
         clk_inverted=true;            \n\
         inv_bits=0x00; # will be xored with input data\n\
         usb_freq=8000000;\n\
-        area={ x0=0.048; y0=0.035; x1=0.34; y1=0.245; }\n\
         \n\
     }\n\
 )\n\
 "
-                         };
+    };

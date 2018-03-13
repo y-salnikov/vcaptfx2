@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include <unistd.h>
 #include "SDL.h"
-#include "SDL_opengl.h"
-#include <GL/gl.h>
 #include "types.h"
 #include "render.h"
 #include "compat.h"
@@ -14,76 +12,42 @@
 
 #define WINDOW_W 640 * 2
 #define WINDOW_H 288 * 3
-#define RATIO ((float)WINDOW_W / (float)WINDOW_H)
 
-void set_perspective(void)
+int resizeWindow(render_context_type* rc, int width, int height)
 {
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluOrtho2D(0.0, 1.0, 0.0, 1.0);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    return 1;
 }
 
-int resizeWindow(render_context_type* rc, int width, int height) // {{{
+void init_SDL_surface(render_context_type* rc)
 {
-    return 1;
-
-    int x0, y0;
-    static uint32_t w_width;
-    static uint32_t w_height;
-
-    w_width  = width;
-    w_height = height;
-
-    if (width / RATIO > height) {
-        w_width  = height * RATIO;
-        w_height = height;
-        x0 = (width - w_width) / 2;
-        y0 = 0;
-    } else {
-        w_width  = width;
-        w_height = width / RATIO;
-        x0 = 0;
-        y0 = (height - w_height) / 2;
-    }
-
-    int sdl_flags = SDL_OPENGL | SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER;
-    rc->sdl_surface = SDL_SetVideoMode(width, height, 0, sdl_flags);
-
-    /* Setup our viewport. */
-    glViewport(x0, y0, (GLsizei)w_width, (GLsizei)w_height);
-
-    /* change to the projection matrix and set our viewing volume. */
-    set_perspective();
-
-    return 1;
-} // }}}
-
-void init_opengl(render_context_type* rc)
-{
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-
     // https://www.libsdl.org/release/SDL-1.2.15/docs/html/sdlsetvideomode.html
-    rc->sdl_surface = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0, SDL_OPENGL | SDL_RESIZABLE);
+    rc->sdl_surface = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 32, SDL_HWSURFACE);
     if (rc->sdl_surface == NULL) {
-        printf("Can't set OpenGL mode: %s\n", SDL_GetError());
+        printf("Can't init SDL surface: %s\n", SDL_GetError());
         SDL_Quit();
         exit(1);
     }
+    SDL_WM_SetCaption("vcaptfx2: MC0511", NULL);
 
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_WM_SetCaption("video capture", NULL);
-    glViewport(0, 0, WINDOW_W, WINDOW_H);
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_LINE_SMOOTH);
-    glEnable(GL_POINT_SMOOTH);
-    glShadeModel(GL_SMOOTH);
-    glClearStencil(0);
-    glClearDepth(1.0f);
-    glGenTextures(1, &rc->fb_texture);
-    set_perspective();
+    const SDL_VideoInfo *info = SDL_GetVideoInfo();
+
+    printf("Is it possible to create hardware surfaces? %d\n",          info->hw_available);
+    printf("Is there a window manager available? %d\n",                 info->wm_available);
+    printf("Are hardware to hardware blits accelerated? %d\n",          info->blit_hw);
+    printf("Are hardware to hardware colorkey blits accelerated? %d\n", info->blit_hw_CC);
+    printf("Are hardware to hardware alpha blits accelerated? %d\n",    info->blit_hw_A);
+    printf("Are software to hardware blits accelerated? %d\n",          info->blit_sw);
+    printf("Are software to hardware colorkey blits accelerated? %d\n", info->blit_sw_CC);
+    printf("Are software to hardware alpha blits accelerated? %d\n",    info->blit_sw_A);
+    printf("Are color fills accelerated? %d\n",                         info->blit_fill);
+    printf("Total amount of video memory in Kilobytes %d\n",            info->video_mem);
+
+    printf("w %d\n", rc->sdl_surface->w);
+    printf("h %d\n", rc->sdl_surface->h);
+    printf("pitch %d\n", rc->sdl_surface->pitch);
+    printf("BitsPerPixel %d\n", rc->sdl_surface->format->BitsPerPixel);
+    printf("BytesPerPixel %d\n", rc->sdl_surface->format->BytesPerPixel);
+    printf("refcount %d\n", rc->sdl_surface->refcount);
 }
 
 render_context_type* render_init(void* machine_context, void* process_context)
@@ -100,8 +64,7 @@ render_context_type* render_init(void* machine_context, void* process_context)
         exit (1);
     }
 
-    machine_get_area(rc->machine_context, &rc->tx0, &rc->ty0, &rc->tx1, &rc->ty1);
-    init_opengl(rc);
+    init_SDL_surface(rc);
     return rc;
 }
 
@@ -116,111 +79,74 @@ void draw_centered_image(render_context_type* rc, int img_width, int img_height,
     int x0, y0;
     int fb_width  = rc->process_context->machine_context->fb_width;
     int fb_height = rc->process_context->machine_context->fb_height;
-    x0 = (fb_width  * (rc->machine_context->x0 + rc->machine_context->x1) / 2) - (img_width / 2);
-    y0 = (fb_height * (rc->machine_context->y0 + rc->machine_context->y1) / 2) - (img_height / 2);
+    x0 = (fb_width  / 2) - (img_width  / 2) + (3 - rand() % 6);
+    y0 = (fb_height / 2) - (img_height / 2) + (3 - rand() % 6);
 
-    int x, y, pixel_idx;
+    int x, y, fb_line, img_line, pixel_idx;
     px* fb_pixel;
     for (y = 0; y < img_height; y++)
+    {
+        img_line = img_width * y;
+        fb_line = (fb_width * (y + y0));
         for (x = 0; x < img_width; x++) {
-            pixel_idx = (img_width * y + x) * 4;
-            fb_pixel = &rc->process_context->framebuf[(fb_width * (y + y0)) + x0 + x];
+            pixel_idx = (img_line + x) * 4;
+            fb_pixel = &rc->process_context->framebuf[fb_line + x0 + x];
             fb_pixel->R = img_pixels[pixel_idx];
             fb_pixel->G = img_pixels[pixel_idx + 1];
             fb_pixel->B = img_pixels[pixel_idx + 2];
             fb_pixel->A = img_pixels[pixel_idx + 3];
         }
+    }
 } // }}}
 
-void update_texture(render_context_type* rc )
+void update_sdl_surface(render_context_type* rc )
 {
+    //SDL_LockSurface(rc->sdl_surface);
     if (rc->no_signal_flag)
         draw_centered_image(rc, no_signal_img.width, no_signal_img.height, no_signal_img.pixel_data);
     if (rc->no_device_flag)
         draw_centered_image(rc, no_device_img.width, no_device_img.height, no_device_img.pixel_data);
-    glBindTexture(GL_TEXTURE_2D, rc->fb_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     int fb_width  = rc->process_context->machine_context->fb_width;
     int fb_height = rc->process_context->machine_context->fb_height;
 
     int sb_width  = rc->process_context->machine_context->sb_width;
-    int sb_height = rc->process_context->machine_context->sb_height;
 
     px* framebuf  = rc->process_context->framebuf;
-    px* scalerbuf = rc->process_context->scalerbuf;
-    // const px black_pixel = { .R = 0, .G = 0, .B = 0, .A = 0 };
+    px* scalerbuf = rc->sdl_surface->pixels;
     px current_pixel;
-    int sb_line_size = sizeof(px) * sb_width;
 
     int x, y, sb_x;
-    int fb_line, sb_line0, sb_line1, sb_line2;
+    int fb_line, sb_line0, sb_line1;
     for (y = 0; y < fb_height; y++)
     {
         fb_line = fb_width * y;
         sb_line0 = y * 3 * sb_width;
         sb_line1 = sb_line0 + sb_width;
-        sb_line2 = sb_line1 + sb_width;
         for (x = 0; x < fb_width; x++)
         {
-            current_pixel = framebuf[fb_line + x];
+            current_pixel.R = framebuf[fb_line + x].B;
+            current_pixel.G = framebuf[fb_line + x].R;
+            current_pixel.B = framebuf[fb_line + x].G;
+            current_pixel.A = 0; // framebuf[fb_line + x].A;
             sb_x = x * 2;
             scalerbuf[sb_line0 + sb_x + 0] = current_pixel;
             scalerbuf[sb_line0 + sb_x + 1] = current_pixel;
-            // scalerbuf[sb_line1 + sb_x + 0] = current_pixel;
-            // scalerbuf[sb_line1 + sb_x + 1] = current_pixel;
-            // scalerbuf[sb_line2 + sb_x + 0] = black_pixel;
-            // scalerbuf[sb_line2 + sb_x + 1] = black_pixel;
         }
-        memcpy((void*)&scalerbuf[sb_line1], (void*)&scalerbuf[sb_line0], sb_line_size);
-        // memset((void*)&scalerbuf[sb_line2], 0, sb_line_size);
+        memcpy((void*)&scalerbuf[sb_line1], (void*)&scalerbuf[sb_line0], rc->sdl_surface->pitch);
     }
-
-    glTexImage2D(
-            GL_TEXTURE_2D, // target
-            0, // level
-            GL_RGBA, // internalFormat
-            sb_width, // width
-            sb_height, // height
-            0, // border
-            GL_RGBA, // format
-            GL_UNSIGNED_BYTE, // type
-            scalerbuf // data
-            );
+    //SDL_UnlockSurface(rc->sdl_surface);
 }
-
-void show_frame(render_context_type* rc) //{{{
-{
-    glLoadIdentity();
-    // очистка буферов
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-    update_texture(rc);
-
-    glBegin(GL_QUADS);
-      glTexCoord2f(rc->tx0, rc->ty1);
-      glVertex2f(0.0, 0.0);
-
-      glTexCoord2f(rc->tx1, rc->ty1);
-      glVertex2f(1.0, 0.0);
-
-      glTexCoord2f(rc->tx1, rc->ty0);
-      glVertex2f(1.0, 1.0);
-
-      glTexCoord2f(rc->tx0, rc->ty0);
-      glVertex2f(0.0, 1.0);
-    glEnd();
-
-    glFlush();
-    SDL_GL_SwapBuffers();
-} // }}}
 
 int video_output(render_context_type* rc)
 {
-    show_frame(rc);
+    update_sdl_surface(rc);
+    // https://www.libsdl.org/release/SDL-1.2.15/docs/html/sdlflip.html
+    // SDL_Flip(rc->sdl_surface);
+
+    // https://www.libsdl.org/release/SDL-1.2.15/docs/html/sdlupdaterect.html
+    SDL_UpdateRect(rc->sdl_surface, 0, 0, 0, 0);
+
     SLEEP(10);
     return 0;
 }

@@ -8,14 +8,6 @@
 #include "compat.h"
 #include "default_config.h"
 
-void machine_get_area(machine_type* mac, float* x0, float* y0, float* x1, float* y1)
-{
-    *x0 = mac->x0;
-    *y0 = mac->y0;
-    *x1 = mac->x1;
-    *y1 = mac->y1;
-}
-
 void extract_color(machine_type* mac, uint8_t d, uint8_t* R, uint8_t* G, uint8_t* B)
 {
     uint8_t data, i;
@@ -96,7 +88,7 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
     int err = 0;
     int i, c, m, bw;
     const char* binstr;
-    config_setting_t* colors, *color, *area;
+    config_setting_t* colors, *color;
     size_t s;
     size_t total_size;
     unsigned int timeout;
@@ -165,24 +157,13 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
         }
     }
 
-    area = config_setting_get_member(machine, "area");
-
-    if (area != NULL) {
-        if (!((config_setting_lookup_float(area, "x0", &mac->x0)) &&
-                (config_setting_lookup_float(area, "y0", &mac->y0)) &&
-                (config_setting_lookup_float(area, "x1", &mac->x1)) &&
-                (config_setting_lookup_float(area, "y1", &mac->y1)))) {
-            err++;
-        }
-    }
-
     config_setting_lookup_int(machine, "framebuffer_width", &mac->fb_width);
     mac->sb_width = mac->fb_width * 2;
-    config_setting_lookup_int(machine, "horizontal_skip", &mac->h_counter_start);
+    config_setting_lookup_int(machine, "h_counter_shift", &mac->h_counter_shift);
 
     config_setting_lookup_int(machine, "framebuffer_height", &mac->fb_height);
     mac->sb_height = mac->fb_height * 3;
-    config_setting_lookup_int(machine, "vertical_skip", &mac->v_counter_start);
+    config_setting_lookup_int(machine, "v_counter_shift", &mac->v_counter_shift);
 
     return err;
 }
@@ -204,11 +185,11 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     err = 0;
 
     mac = malloc(sizeof (machine_type));
-    mac->fb_width  = 1024; //default value
-    mac->fb_height = 1024; //default value
+    mac->fb_width  = 640; //default value
+    mac->fb_height = 480; //default value
+    mac->h_counter_shift = 0;
+    mac->v_counter_shift = 0;
     mac->colors_length = 0;
-    mac->x0 = mac->y0 = 0.0;
-    mac->x1 = mac->y1 = 1.0;
     mac->clk_inverted = mac->inv_bits = 0;
     mac->sync_bit_mask = 0x10;
     mac->pixel_bits_mask = 0x0f;

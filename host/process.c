@@ -101,13 +101,13 @@ void parse_data(process_context_type* prc, uint8_t* buf, uint32_t length)
         c = buf[i];
 
         if (h_detect(prc->machine_context, c) && (prc->cur_line < prc->machine_context->fb_height)) {
-            prc->cur_px = prc->machine_context->h_counter_start;
+            prc->cur_px = prc->machine_context->h_counter_shift;
             prc->cur_line++;
         }
 
         if (v_detect(prc->machine_context, c)) {
-            prc->cur_px   = prc->machine_context->h_counter_start;
-            prc->cur_line = prc->machine_context->v_counter_start;
+            prc->cur_px   = prc->machine_context->h_counter_shift;
+            prc->cur_line = prc->machine_context->v_counter_shift;
         }
 
         next_pixel(prc, c);
