@@ -144,12 +144,15 @@ void update_texture(render_context_type* rc )
 
     int fb_width  = rc->process_context->machine_context->fb_width;
     int fb_height = rc->process_context->machine_context->fb_height;
-    int sb_width  = fb_width * 2;
+
+    int sb_width  = rc->process_context->machine_context->sb_width;
+    int sb_height = rc->process_context->machine_context->sb_height;
 
     px* framebuf  = rc->process_context->framebuf;
     px* scalerbuf = rc->process_context->scalerbuf;
     // const px black_pixel = { .R = 0, .G = 0, .B = 0, .A = 0 };
     px current_pixel;
+    int sb_line_size = sizeof(px) * sb_width;
 
     int x, y, sb_x;
     int fb_line, sb_line0, sb_line1, sb_line2;
@@ -170,16 +173,16 @@ void update_texture(render_context_type* rc )
             // scalerbuf[sb_line2 + sb_x + 0] = black_pixel;
             // scalerbuf[sb_line2 + sb_x + 1] = black_pixel;
         }
-        memcpy((void*)&scalerbuf[sb_line1], (void*)&scalerbuf[sb_line0], sizeof(px) * sb_width);
-        memset((void*)&scalerbuf[sb_line2], 0, sizeof(px) * sb_width);
+        memcpy((void*)&scalerbuf[sb_line1], (void*)&scalerbuf[sb_line0], sb_line_size);
+        // memset((void*)&scalerbuf[sb_line2], 0, sb_line_size);
     }
 
     glTexImage2D(
             GL_TEXTURE_2D, // target
             0, // level
             GL_RGBA, // internalFormat
-            fb_width * 2, // width
-            fb_height * 3, // height
+            sb_width, // width
+            sb_height, // height
             0, // border
             GL_RGBA, // format
             GL_UNSIGNED_BYTE, // type

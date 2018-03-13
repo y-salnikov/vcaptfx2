@@ -177,8 +177,11 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
     }
 
     config_setting_lookup_int(machine, "framebuffer_width", &mac->fb_width);
+    mac->sb_width = mac->fb_width * 2;
     config_setting_lookup_int(machine, "horizontal_skip", &mac->h_counter_start);
+
     config_setting_lookup_int(machine, "framebuffer_height", &mac->fb_height);
+    mac->sb_height = mac->fb_height * 3;
     config_setting_lookup_int(machine, "vertical_skip", &mac->v_counter_start);
 
     return err;

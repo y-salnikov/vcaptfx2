@@ -13,6 +13,8 @@ typedef struct {
 typedef struct machine_struct {
     int fb_width;
     int fb_height;
+    int sb_width;
+    int sb_height;
     int h_counter_start;
     int v_counter_start;
     uint8_t color_mode;

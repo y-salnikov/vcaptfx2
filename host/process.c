@@ -14,8 +14,8 @@ process_context_type* process_init(machine_type* mac)
     prc->cur_line = 0;
     prc->cur_px = 0;
     prc->machine_context = mac;
-    prc->framebuf = calloc(mac->fb_width * mac->fb_height, sizeof(px));
-    prc->scalerbuf = calloc((mac->fb_width * 2) * (mac->fb_height * 3), sizeof(px));
+    prc->framebuf  = calloc(mac->fb_width * mac->fb_height, sizeof(px));
+    prc->scalerbuf = calloc(mac->sb_width * mac->sb_height, sizeof(px));
 
     if (prc->framebuf == NULL) {
         fprintf(stderr, "Can't allocate %lu bytes of memory.",
@@ -106,7 +106,7 @@ void parse_data(process_context_type* prc, uint8_t* buf, uint32_t length)
         }
 
         if (v_detect(prc->machine_context, c)) {
-            prc->cur_px = prc->machine_context->h_counter_start;
+            prc->cur_px   = prc->machine_context->h_counter_start;
             prc->cur_line = prc->machine_context->v_counter_start;
         }
 
