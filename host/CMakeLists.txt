@@ -22,7 +22,7 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/Vcaptfx2Config.h.in"
   "${PROJECT_SOURCE_DIR}/Vcaptfx2Config.h"
   )
- 
+
 # add the binary tree to the search path for include files
 # so that we will find
 include_directories("${PROJECT_BINARY_DIR}")

@@ -13,8 +13,8 @@ typedef struct {
 typedef struct machine_struct {
     int fb_width;
     int fb_height;
-    int skip_h;
-    int skip_v;
+    int h_counter_start;
+    int v_counter_start;
     uint8_t color_mode;
     char* name;
     int clk_inverted;
@@ -34,9 +34,9 @@ typedef struct machine_struct {
 
 typedef struct process_context_struct {
     px* framebuf;
-    px* out_framebuf;
-    uint16_t cur_line;
-    uint16_t cur_px;
+    px* scalerbuf;
+    int cur_line;
+    int cur_px;
     machine_type* machine_context;
 } process_context_type;
 

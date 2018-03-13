@@ -221,12 +221,12 @@ int main(int argc, char** argv)
         video_output(rc);
     }
 
+    return 0;
     usb_stop_thread(utc);
 
     usb_done(utc);
     process_done(pcont);
     render_done(rc);
 
-    return 0;
 }
 

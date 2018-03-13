@@ -64,8 +64,9 @@ void init_opengl(render_context_type* rc)
 {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-    if (NULL == (rc->sdl_surface = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0,
-                                                    SDL_OPENGL | SDL_RESIZABLE))) {
+    // https://www.libsdl.org/release/SDL-1.2.15/docs/html/sdlsetvideomode.html
+    rc->sdl_surface = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0, SDL_OPENGL | SDL_RESIZABLE);
+    if (rc->sdl_surface == NULL) {
         printf("Can't set OpenGL mode: %s\n", SDL_GetError());
         SDL_Quit();
         exit(1);
@@ -84,7 +85,6 @@ void init_opengl(render_context_type* rc)
     glGenTextures(1, &rc->fb_texture);
     set_perspective();
 }
-
 
 render_context_type* render_init(void* machine_context, void* process_context)
 {
@@ -142,32 +142,37 @@ void update_texture(render_context_type* rc )
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    int fb_width = rc->process_context->machine_context->fb_width;
+    int fb_width  = rc->process_context->machine_context->fb_width;
     int fb_height = rc->process_context->machine_context->fb_height;
-    int out_fb_width  = fb_width * 2;
+    int sb_width  = fb_width * 2;
 
-    px* framebuf = rc->process_context->framebuf;
-    px* out_framebuf = rc->process_context->out_framebuf;
+    px* framebuf  = rc->process_context->framebuf;
+    px* scalerbuf = rc->process_context->scalerbuf;
+    // const px black_pixel = { .R = 0, .G = 0, .B = 0, .A = 0 };
     px current_pixel;
-    const px black_pixel = { .R = 0, .G = 0, .B = 0, .A = 0 };
 
-    int x, y, dst_x;
-    int l0, l1, l2;
+    int x, y, sb_x;
+    int fb_line, sb_line0, sb_line1, sb_line2;
     for (y = 0; y < fb_height; y++)
+    {
+        fb_line = fb_width * y;
+        sb_line0 = y * 3 * sb_width;
+        sb_line1 = sb_line0 + sb_width;
+        sb_line2 = sb_line1 + sb_width;
         for (x = 0; x < fb_width; x++)
         {
-            current_pixel = framebuf[fb_width * y + x];
-            dst_x = x * 2;
-            l0 = y * 3 * out_fb_width;
-            l1 = l0 + out_fb_width;
-            l2 = l1 + out_fb_width;
-            out_framebuf[l0 + dst_x + 0] = current_pixel;
-            out_framebuf[l0 + dst_x + 1] = current_pixel;
-            out_framebuf[l1 + dst_x + 0] = current_pixel;
-            out_framebuf[l1 + dst_x + 1] = current_pixel;
-            out_framebuf[l2 + dst_x + 0] = black_pixel;
-            out_framebuf[l2 + dst_x + 1] = black_pixel;
+            current_pixel = framebuf[fb_line + x];
+            sb_x = x * 2;
+            scalerbuf[sb_line0 + sb_x + 0] = current_pixel;
+            scalerbuf[sb_line0 + sb_x + 1] = current_pixel;
+            // scalerbuf[sb_line1 + sb_x + 0] = current_pixel;
+            // scalerbuf[sb_line1 + sb_x + 1] = current_pixel;
+            // scalerbuf[sb_line2 + sb_x + 0] = black_pixel;
+            // scalerbuf[sb_line2 + sb_x + 1] = black_pixel;
         }
+        memcpy((void*)&scalerbuf[sb_line1], (void*)&scalerbuf[sb_line0], sizeof(px) * sb_width);
+        memset((void*)&scalerbuf[sb_line2], 0, sizeof(px) * sb_width);
+    }
 
     glTexImage2D(
             GL_TEXTURE_2D, // target
@@ -178,7 +183,7 @@ void update_texture(render_context_type* rc )
             0, // border
             GL_RGBA, // format
             GL_UNSIGNED_BYTE, // type
-            out_framebuf // data
+            scalerbuf // data
             );
 }
 
@@ -213,6 +218,6 @@ void show_frame(render_context_type* rc) //{{{
 int video_output(render_context_type* rc)
 {
     show_frame(rc);
-    SLEEP(1);
+    SLEEP(10);
     return 0;
 }

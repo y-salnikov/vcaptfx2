@@ -7,9 +7,9 @@ common:\n\
     pid=0x8613;\n\
     usb_freq=12000000;\n\
     framebuffer_width=640;\n\
-    horizontal_skip=73;\n\
+    horizontal_skip=-73;\n\
     framebuffer_height=288;\n\
-    vertical_skip=17;\n\
+    vertical_skip=-17;\n\
     clk_inverted=true;\n\
     sync_bit_mask=0x10;   # which bit is sync\n\
     inv_bits=0x00;        # will be xored with input data\n\
