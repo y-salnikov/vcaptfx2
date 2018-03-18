@@ -34,7 +34,7 @@ typedef struct machine_struct {
 
 typedef struct process_context_struct {
     px* framebuf;
-    px* scalerbuf;
+    px* framebuf_position;
     int cur_line;
     int cur_line_index;
     int cur_px;

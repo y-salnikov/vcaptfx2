@@ -10,16 +10,16 @@
 
 void extract_color(machine_type* mac, uint8_t d, uint8_t* R, uint8_t* G, uint8_t* B)
 {
-    uint8_t data;
-    data = (d ^ mac->inv_bits) & mac->pixel_bits_mask;
+    uint8_t mask;
+    mask = (d ^ mac->inv_bits) & mac->pixel_bits_mask;
 
     if (mac->color_mode) {
-        *R = mac->colors[data].R;
-        *G = mac->colors[data].G;
-        *B = mac->colors[data].B;
+        *R = mac->colors[mask].R;
+        *G = mac->colors[mask].G;
+        *B = mac->colors[mask].B;
         return;
     } else {
-        *R = *G = *B = mac->colors[data].BW;
+        *R = *G = *B = mac->colors[mask].BW;
         return;
     }
 }
@@ -55,12 +55,12 @@ FILE* open_cfg_file(const char* PATH, const char* FILENAME)
 
 int bin2int(const char* bin_str)
 {
-    int i , l, k, s;
+    int i, l, s;
     s = 0;
     l = strlen(bin_str);
 
     for (i = 0; i < l; i++) {
-        k = (1 << (l - i - 1));
+        int k = (1 << (l - i - 1));
 
         if (bin_str[i] == '1') {
             s += k;
@@ -80,8 +80,7 @@ static unsigned int to_bytes_per_ms(unsigned int samplerate)
 int get_macine_config(machine_type* mac, config_setting_t* machine)
 {
     int err = 0;
-    uint8_t mask;
-    int i, m, c, bw;
+    int m, c, bw;
     const char* binstr;
     size_t s;
     size_t total_size;
@@ -118,7 +117,7 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
     colors = config_setting_get_member(machine, "colors");
 
     if (colors != NULL) {
-        for (i = 0; i < config_setting_length(colors); i++) {
+        for (int i = 0; i < config_setting_length(colors); i++) {
             color = config_setting_get_elem(colors, i);
 
             if (config_setting_lookup_int(color, "mask", &m) != CONFIG_TRUE) {
@@ -141,7 +140,7 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
                 break;
             }
 
-            mask = (m & 0xFF);
+            uint8_t mask = (m & 0xFF);
             mac->colors[mask].R = ((c & 0xFF0000) >> 16);
             mac->colors[mask].G = ((c & 0x00FF00) >> 8);
             mac->colors[mask].B = ((c & 0xFF) );
@@ -150,11 +149,11 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
     }
 
     config_setting_lookup_int(machine, "framebuffer_width", &mac->fb_width);
-    mac->sb_width = mac->fb_width * 2;
+    mac->sb_width = 1120;
     config_setting_lookup_int(machine, "h_counter_shift", &mac->h_counter_shift);
 
     config_setting_lookup_int(machine, "framebuffer_height", &mac->fb_height);
-    mac->sb_height = mac->fb_height * 3;
+    mac->sb_height = 864;
     config_setting_lookup_int(machine, "v_counter_shift", &mac->v_counter_shift);
 
     return err;
@@ -172,9 +171,8 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     config_t cfg;
     config_setting_t* setting, *machine, *common;
     int count, i;
-    uint8_t found, err;
 
-    err = 0;
+    uint8_t err = 0;
 
     mac = malloc(sizeof (machine_type));
     mac->fb_width  = 640; //default value
@@ -216,6 +214,7 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     config_file = open_cfg_file(cfg_path, cfg_filename);
 
     if (config_file == NULL) {
+        free(mac);
         return NULL;
     }
 
@@ -225,6 +224,7 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
                 config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
+        free(mac);
         return NULL;
     }
 
@@ -235,6 +235,7 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     } else {
         fprintf(stderr, "machines not found in config\n");
         config_destroy(&cfg);
+        free(mac);
         return NULL;
     }
 
@@ -248,6 +249,7 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
         }
 
         if (!(command & (COMMAND_SELECT))) {
+            free(mac);
             return NULL;
         }
     }
@@ -258,10 +260,11 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
         if (machine == NULL) {
             fprintf(stderr, "Index out of range. Use --list to check.\n");
             config_destroy(&cfg);
+            free(mac);
             return NULL;
         }
     } else {              // by name
-        found = 0;
+        int found = 0;
 
         for (i = 0; i < count; i++) {
             machine = config_setting_get_elem(setting, i);
@@ -276,6 +279,7 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
 
         if (found == 0) {
             fprintf(stderr, "%s not found\n", machine_name);
+            free(mac);
             return NULL;
         }
     }
@@ -283,6 +287,7 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     if (config_setting_lookup_string(machine, "name", &mac_name) != CONFIG_TRUE) {
         fprintf(stderr, "machine name not found in config\n");
         config_destroy(&cfg);
+        free(mac);
         return NULL;
     }
 

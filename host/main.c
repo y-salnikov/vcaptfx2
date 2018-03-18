@@ -72,7 +72,6 @@ int main(int argc, char** argv)
 {
     uint8_t stop = 0;
     uint8_t scr_l_e = 1;
-    int c;
     event_type ev = NOTHING;
     process_context_type* pcont;
     usb_transfer_context_type* utc;
@@ -101,8 +100,7 @@ int main(int argc, char** argv)
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "ldhm:c:",
-                         long_options, &option_index);
+        int c = getopt_long(argc, argv, "ldhm:c:", long_options, &option_index);
 
         /* Detect the end of the options. */
         if (c == -1) {
@@ -193,7 +191,7 @@ int main(int argc, char** argv)
         }
 
         if (ev != SCL_PRESSED) {
-            scr_l_e = 1;    // SCROLL_LOCK key release
+            scr_l_e = 1; // SCROLL_LOCK key release
         }
 
         if (usb_get_thread_state(utc) == 3) {
@@ -227,6 +225,5 @@ int main(int argc, char** argv)
     usb_done(utc);
     process_done(pcont);
     render_done(rc);
-
 }
 

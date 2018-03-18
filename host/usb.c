@@ -22,31 +22,28 @@
 
 #define MAX_EMPTY_TRANSFERS 64
 
-
 LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer* xfr);
 
 int WriteRAM(usb_transfer_context_type* utc, size_t addr, const unsigned char* data, size_t nbytes)
 {
     int n_errors = 0;
-    size_t bs;
-    size_t dl_addr;
-    int rv;
     const size_t chunk_size = 16;
     const unsigned char* d = data;
     const unsigned char* dend = data + nbytes;
 
     while (d < dend) {
-        bs = dend - d;
+        size_t bs = dend - d;
 
         if (bs > chunk_size) {
             bs = chunk_size;
         }
 
-        dl_addr = addr + (d - data);
-        rv = libusb_control_transfer(utc->device_h, 0x40, 0xa0,
-                                     /*addr=*/dl_addr, 0,
-                                     /*buf=*/(unsigned char*)d,/*size=*/bs,
-                                     /*timeout=*/1000/*msec*/);
+        size_t dl_addr = addr + (d - data);
+        int rv = libusb_control_transfer(utc->device_h, 0x40, 0xa0,
+                                         /*addr=*/dl_addr, 0,
+                                         /*buf=*/(unsigned char*)d,
+                                         /*size=*/bs,
+                                         /*timeout=*/1000/*msec*/);
 
         if (rv < 0) {
             fprintf(stderr, "Error: Writing %lu bytes at 0x%X\n", (long unsigned int)bs, (unsigned int)dl_addr);
@@ -58,7 +55,6 @@ int WriteRAM(usb_transfer_context_type* utc, size_t addr, const unsigned char* d
 
     return (n_errors);
 }
-
 
 int ReadRAM(usb_transfer_context_type* utc, size_t addr, const unsigned char* data, size_t nbytes)
 {
@@ -80,7 +76,8 @@ int ReadRAM(usb_transfer_context_type* utc, size_t addr, const unsigned char* da
         rd_addr = addr + (d - data);
         rv = libusb_control_transfer(utc->device_h, 0xc0, 0xa0,
                                      /*addr=*/rd_addr, 0,
-                                     /*buf=*/(unsigned char*)d,/*size=*/bs,
+                                     /*buf=*/(unsigned char*)d,
+                                     /*size=*/bs,
                                      /*timeout=*/1000/*msec*/);
 
         if (rv < 0) {
@@ -94,7 +91,6 @@ int ReadRAM(usb_transfer_context_type* utc, size_t addr, const unsigned char* da
     return (n_errors);
 }
 
-
 int FX2Reset(usb_transfer_context_type* utc, uint8_t running)
 {
     // Reset is accomplished by writing a 1 to address 0xE600.
@@ -105,14 +101,10 @@ int FX2Reset(usb_transfer_context_type* utc, uint8_t running)
     return (WriteRAM(utc, reset_addr, &val, 1));
 }
 
-
 int ProgramIHexLine(usb_transfer_context_type* utc, const char* buf,    const char* path, int line)
 {
     const char* s;
     unsigned int nbytes = 0, addr = 0, type = 0;
-    unsigned char* data;
-    unsigned char cksum;
-    unsigned int i, d;
     unsigned int file_cksum;
 
     s = buf;
@@ -133,10 +125,14 @@ int ProgramIHexLine(usb_transfer_context_type* utc, const char* buf,    const ch
 
     if (type == 0) {
         //printf("  Writing nbytes=%d at addr=0x%04x\n",nbytes,addr);
-        if (!(nbytes >= 0 && nbytes < 256)) {
+        if (!(nbytes < 256)) {
             fprintf(stderr, "%s:%d: format violation (2)\n", path, line);
             return (1);
         }
+
+        unsigned char* data;
+        unsigned char cksum;
+        unsigned int i, d;
 
         data = malloc(nbytes);
         cksum = nbytes + addr + (addr >> 8) + type;
@@ -146,6 +142,7 @@ int ProgramIHexLine(usb_transfer_context_type* utc, const char* buf,    const ch
 
             if (sscanf(s, "%02x", &d) != 1) {
                 fprintf(stderr, "%s:%d: format violation (3)\n", path, line);
+                free(data);
                 return (1);
             }
 
@@ -158,12 +155,14 @@ int ProgramIHexLine(usb_transfer_context_type* utc, const char* buf,    const ch
 
         if (sscanf(s, "%02x", &file_cksum) != 1) {
             fprintf(stderr, "%s:%d: format violation (4)\n", path, line);
+            free(data);
             return (1);
         }
 
         if ((cksum + file_cksum) & 0xff) {
             fprintf(stderr, "%s:%d: checksum mismatch (%u/%u)\n",
                     path, line, cksum, file_cksum);
+            free(data);
             return (1);
         }
 
@@ -184,15 +183,10 @@ int ProgramIHexLine(usb_transfer_context_type* utc, const char* buf,    const ch
     return (0);
 }
 
-
-
 usb_transfer_context_type*  usb_init(const char** firmware, void* proc_cont)
 {
 
     usb_transfer_context_type* utc;
-    int err, line;
-    const char* s;
-    const char** ss;
 
     if (libusb_init(NULL)) {
         fprintf(stderr, "libusb Init error\n");
@@ -213,7 +207,7 @@ usb_transfer_context_type*  usb_init(const char** firmware, void* proc_cont)
     } else {
         printf("Transfering firmware\n");
 
-        err = libusb_set_configuration(utc->device_h, 1);
+        int err = libusb_set_configuration(utc->device_h, 1);
 
         if (err) {
             fprintf(stderr, "Can't set device configuration\n");
@@ -239,10 +233,11 @@ usb_transfer_context_type*  usb_init(const char** firmware, void* proc_cont)
         }
 
         FX2Reset(utc, 0);
-        ss = firmware;
+        const char** ss = firmware;
         err = 0;
-        line = 0;
+        int line = 0;
 
+        const char* s;
         do {
             s = *ss++;
 
@@ -282,7 +277,7 @@ usb_transfer_context_type*  usb_init(const char** firmware, void* proc_cont)
         return NULL;
     }
 
-    err = libusb_set_configuration(utc->device_h, 1);
+    int err = libusb_set_configuration(utc->device_h, 1);
 
     if (err) {
         fprintf(stderr, "Can't set device configuration\n");
@@ -316,7 +311,7 @@ void usb_done(usb_transfer_context_type* utc)
 {
     int err;
 
-    libusb_free_config_descriptor   (utc->conf);
+    libusb_free_config_descriptor(utc->conf);
 
     err = libusb_release_interface(utc->device_h, 0);
 
@@ -329,9 +324,6 @@ void usb_done(usb_transfer_context_type* utc)
     free(utc->control_buffer);
     free(utc);
 }
-
-
-
 
 void usb_send_start_cmd(usb_transfer_context_type* utc)
 {
@@ -362,12 +354,9 @@ void usb_send_start_cmd(usb_transfer_context_type* utc)
     }
 }
 
-
 void usb_start_transfer (usb_transfer_context_type* utc)
 {
     uint8_t i;
-    uint8_t* usb_buf;
-    struct libusb_transfer* xfr;
 
     if (utc == NULL) {
         return;
@@ -376,8 +365,8 @@ void usb_start_transfer (usb_transfer_context_type* utc)
     usb_send_start_cmd(utc);
 
     for (i = 0; i < utc->process_context->machine_context->N_OF_TRANSFERS; i++) {
-        usb_buf = malloc(utc->process_context->machine_context->USB_BUF_SIZE);
-        xfr = libusb_alloc_transfer(0);
+        uint8_t* usb_buf = malloc(utc->process_context->machine_context->USB_BUF_SIZE);
+        struct libusb_transfer* xfr = libusb_alloc_transfer(0);
         libusb_fill_bulk_transfer(xfr, utc->device_h, utc->endpoint, usb_buf,
                                   utc->process_context->machine_context->USB_BUF_SIZE, callbackUSBTransferComplete, utc,
                                   utc->process_context->machine_context->usb_timeout );
@@ -476,7 +465,6 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer* xfr)
         utc->usb_transfer_cb_served = 1;
     }
 }
-
 
 void usb_poll(void) // need to be periodicaly called
 {
