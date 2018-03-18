@@ -12,6 +12,7 @@ process_context_type* process_init(machine_type* mac)
     process_context_type* prc;
     prc = malloc(sizeof(process_context_type));
     prc->cur_line = 0;
+    prc->cur_line_index = 0;
     prc->cur_px = 0;
     prc->machine_context = mac;
     prc->framebuf  = calloc(mac->fb_width * mac->fb_height, sizeof(px));
@@ -30,25 +31,6 @@ void process_done(process_context_type* prc)
 {
     free(prc->framebuf);
     free(prc);
-}
-
-void next_pixel(process_context_type* prc, uint8_t d)
-{
-    uint32_t index;
-    machine_type* mac;
-    mac = prc->machine_context;
-    if (prc->cur_line >= 0 && prc->cur_px >= 0)
-    {
-        index = (mac->fb_width * prc->cur_line + prc->cur_px);
-        extract_color(mac, d, &prc->framebuf[index].R,
-                              &prc->framebuf[index].G,
-                              &prc->framebuf[index].B);
-        prc->framebuf[index].A = 0;
-    }
-
-    if (prc->cur_px < mac->fb_width) {
-        prc->cur_px++;
-    }
 }
 
 uint8_t v_detect(machine_type* mac, uint8_t c)
@@ -92,25 +74,47 @@ uint8_t h_detect(machine_type* mac, uint8_t c)
     return 0;
 }
 
+void next_pixel(process_context_type* prc, uint8_t d)
+{
+}
+
 void parse_data(process_context_type* prc, uint8_t* buf, uint32_t length)
 {
+    uint32_t index;
     uint32_t i;
     uint8_t c;
+    machine_type* mac = prc->machine_context;
 
     for (i = 0; i < length; i++) {
         c = buf[i];
 
-        if (h_detect(prc->machine_context, c) && (prc->cur_line < prc->machine_context->fb_height)) {
+        if (h_detect(mac, c) && (prc->cur_line < mac->fb_height - 1)) {
             prc->cur_px = prc->machine_context->h_counter_shift;
             prc->cur_line++;
         }
 
-        if (v_detect(prc->machine_context, c)) {
-            prc->cur_px   = prc->machine_context->h_counter_shift;
-            prc->cur_line = prc->machine_context->v_counter_shift;
+        if (v_detect(mac, c)) {
+            prc->cur_px   = mac->h_counter_shift;
+            prc->cur_line = mac->v_counter_shift;
         }
 
-        next_pixel(prc, c);
+        if (prc->cur_line >= 0 && prc->cur_px >= 0)
+        {
+            if (prc->cur_px == 0)
+            {
+                prc->cur_line_index = mac->fb_width * prc->cur_line;
+            }
+
+            index = prc->cur_line_index + prc->cur_px;
+            extract_color(mac, c, &prc->framebuf[index].B,
+                                  &prc->framebuf[index].G,
+                                  &prc->framebuf[index].R);
+            prc->framebuf[index].A = 0;
+        }
+
+        if (prc->cur_px < mac->fb_width - 1) {
+            prc->cur_px++;
+        }
     }
 }
 

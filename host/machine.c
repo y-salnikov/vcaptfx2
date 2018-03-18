@@ -10,24 +10,18 @@
 
 void extract_color(machine_type* mac, uint8_t d, uint8_t* R, uint8_t* G, uint8_t* B)
 {
-    uint8_t data, i;
+    uint8_t data;
     data = (d ^ mac->inv_bits) & mac->pixel_bits_mask;
 
-    for (i = 0; i < mac->colors_length; i++) {
-        if (data == mac->colors[i].mask) {
-            if (mac->color_mode) {
-                *R = mac->colors[i].R;
-                *G = mac->colors[i].G;
-                *B = mac->colors[i].B;
-                return;
-            } else {
-                *R = *G = *B = mac->colors[i].BW;
-                return;
-            }
-        }
+    if (mac->color_mode) {
+        *R = mac->colors[data].R;
+        *G = mac->colors[data].G;
+        *B = mac->colors[data].B;
+        return;
+    } else {
+        *R = *G = *B = mac->colors[data].BW;
+        return;
     }
-
-    *R = *G = *B = 0;
 }
 
 FILE* open_cfg_file(const char* PATH, const char* FILENAME)
@@ -86,9 +80,9 @@ static unsigned int to_bytes_per_ms(unsigned int samplerate)
 int get_macine_config(machine_type* mac, config_setting_t* machine)
 {
     int err = 0;
-    int i, c, m, bw;
+    uint8_t mask;
+    int i, m, c, bw;
     const char* binstr;
-    config_setting_t* colors, *color;
     size_t s;
     size_t total_size;
     unsigned int timeout;
@@ -120,13 +114,11 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
     timeout = total_size / to_bytes_per_ms(mac->freq);
     mac->usb_timeout = (timeout + timeout / 4); /* Leave a headroom of 25% percent. */
 
+    config_setting_t* colors, *color;
     colors = config_setting_get_member(machine, "colors");
 
     if (colors != NULL) {
-        mac->colors_length = config_setting_length(colors);
-        mac->colors = calloc(mac->colors_length, sizeof(mach_colors));
-
-        for (i = 0; i < mac->colors_length; i++) {
+        for (i = 0; i < config_setting_length(colors); i++) {
             color = config_setting_get_elem(colors, i);
 
             if (config_setting_lookup_int(color, "mask", &m) != CONFIG_TRUE) {
@@ -149,11 +141,11 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
                 break;
             }
 
-            mac->colors[i].mask = ( m & 0xFF);
-            mac->colors[i].R = ((c & 0xFF0000) >> 16);
-            mac->colors[i].G = ((c & 0x00FF00) >> 8);
-            mac->colors[i].B = ((c & 0xFF) );
-            mac->colors[i].BW = ((bw & 0xFF));
+            mask = (m & 0xFF);
+            mac->colors[mask].R = ((c & 0xFF0000) >> 16);
+            mac->colors[mask].G = ((c & 0x00FF00) >> 8);
+            mac->colors[mask].B = ((c & 0xFF) );
+            mac->colors[mask].BW = ((bw & 0xFF));
         }
     }
 
@@ -189,7 +181,6 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     mac->fb_height = 480; //default value
     mac->h_counter_shift = 0;
     mac->v_counter_shift = 0;
-    mac->colors_length = 0;
     mac->clk_inverted = mac->inv_bits = 0;
     mac->sync_bit_mask = 0x10;
     mac->pixel_bits_mask = 0x0f;
@@ -321,6 +312,5 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
 void machine_done(machine_type* mac)
 {
     free(mac->name);
-    free(mac->colors);
     free(mac);
 }

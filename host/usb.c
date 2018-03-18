@@ -483,7 +483,7 @@ void usb_poll(void) // need to be periodicaly called
     struct timeval tv;
     tv.tv_sec = tv.tv_usec = 0;
 
-    if ( libusb_handle_events_timeout(NULL, &tv) != LIBUSB_SUCCESS) {
+    if (libusb_handle_events_timeout(NULL, &tv) != LIBUSB_SUCCESS) {
         fprintf(stderr, "USB error event\n");
     }
 }

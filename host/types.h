@@ -6,7 +6,6 @@ typedef struct px {
 } px;
 
 typedef struct {
-    uint8_t mask;
     uint8_t R, G, B;
     uint8_t BW;
 } mach_colors;
@@ -24,8 +23,7 @@ typedef struct machine_struct {
     int inv_bits;
     int sync_bit_mask;
     int pixel_bits_mask;
-    mach_colors* colors;
-    int colors_length;
+    mach_colors colors[256];
     int vid;
     int pid;
     int USB_BUF_SIZE;
@@ -38,6 +36,7 @@ typedef struct process_context_struct {
     px* framebuf;
     px* scalerbuf;
     int cur_line;
+    int cur_line_index;
     int cur_px;
     machine_type* machine_context;
 } process_context_type;

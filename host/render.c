@@ -125,10 +125,7 @@ void update_sdl_surface(render_context_type* rc )
         sb_line1 = sb_line0 + sb_width;
         for (x = 0; x < fb_width; x++)
         {
-            current_pixel.R = framebuf[fb_line + x].B;
-            current_pixel.G = framebuf[fb_line + x].R;
-            current_pixel.B = framebuf[fb_line + x].G;
-            current_pixel.A = 0; // framebuf[fb_line + x].A;
+            current_pixel = framebuf[fb_line + x];
             sb_x = x * 2;
             scalerbuf[sb_line0 + sb_x + 0] = current_pixel;
             scalerbuf[sb_line0 + sb_x + 1] = current_pixel;
