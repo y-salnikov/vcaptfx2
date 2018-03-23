@@ -7,10 +7,12 @@ common:
     vid=0x04b4; #vid/pid
     pid=0x8613;
     usb_freq=12000000;
-    framebuffer_width=640;
-    framebuffer_height=288;
+    frame_width=640;
+    frame_height=288;
     h_counter_shift=-73;
     v_counter_shift=-17;
+    fullscreen_width=1920;
+    fullscreen_height=1080;
     clk_inverted=true;
     sync_bit_mask=0x80;   # which bit is sync
     inv_bits=0x00;        # will be xored with input data
@@ -36,7 +38,7 @@ machines:
 )
 STR
 
-f = File.open('/home/random/.config/vcaptfx2/machines.cfg', 'w')
+f = File.open(ENV['HOME'] + '/.config/vcaptfx2/machines.cfg', 'w')
 f.puts header
 c = 128 & 0xFF #160
 l =  43 & 0xFF # 31

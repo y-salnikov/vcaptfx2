@@ -20,7 +20,8 @@ extern const char* vcapt_firmware[];
 uint8_t usb_stop = 0;
 static int verbose_flag;
 
-typedef enum EVENTS {EVENT_QUIT, EVENT_RESIZE, ESC_PRESSED, SCL_PRESSED, NOTHING}  event_type;
+typedef enum EVENTS {EVENT_QUIT, EVENT_RESIZE, ESC_PRESSED, SCL_PRESSED,
+                     ONE_PRESSED, TWO_PRESSED, FULLSCREEN_PRESSED, NOTHING} event_type;
 
 event_type read_events(render_context_type* rc)
 {
@@ -39,6 +40,18 @@ event_type read_events(render_context_type* rc)
             if (event.key.keysym.sym == SDLK_SCROLLOCK) {
                 return SCL_PRESSED;
             }
+
+            if (event.key.keysym.sym == SDLK_1) {
+                return ONE_PRESSED;
+            }
+
+            if (event.key.keysym.sym == SDLK_2) {
+                return TWO_PRESSED;
+            }
+
+            if (event.key.keysym.sym == SDLK_f) {
+                return FULLSCREEN_PRESSED;
+            }
         }
 
         if (event.type == SDL_VIDEORESIZE) {
@@ -50,8 +63,6 @@ event_type read_events(render_context_type* rc)
 
     return NOTHING;
 }
-
-
 
 void print_help(void)
 {
@@ -192,6 +203,25 @@ int main(int argc, char** argv)
 
         if (ev != SCL_PRESSED) {
             scr_l_e = 1; // SCROLL_LOCK key release
+        }
+
+        if (ev == ONE_PRESSED) {
+            rc->viewport_width  = rc->process_context->machine_context->frame_width  * 7 / 4;
+            rc->viewport_height = rc->process_context->machine_context->frame_height * 3;
+            rc->render_function = update_sdl_surface_74x;
+            init_SDL_surface(rc);
+        }
+
+        if (ev == TWO_PRESSED) {
+            rc->viewport_width  = rc->process_context->machine_context->frame_width  * 2;
+            rc->viewport_height = rc->process_context->machine_context->frame_height * 3;
+            rc->render_function = update_sdl_surface_2x;
+            init_SDL_surface(rc);
+        }
+
+        if (ev == FULLSCREEN_PRESSED) {
+            rc->is_fullscreen = 1 - rc->is_fullscreen;
+            init_SDL_surface(rc);
         }
 
         if (usb_get_thread_state(utc) == 3) {

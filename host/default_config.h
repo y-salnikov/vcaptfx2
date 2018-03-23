@@ -6,10 +6,12 @@ common:\n\
     vid=0x04b4; #vid/pid\n\
     pid=0x8613;\n\
     usb_freq=12000000;\n\
-    framebuffer_width=640;\n\
-    framebuffer_height=288;\n\
+    frame_width=640;\n\
+    frame_height=288;\n\
     h_counter_shift=-73;\n\
     v_counter_shift=-17;\n\
+    fullscreen_width=1920;\n\
+    fullscreen_height=1080;\n\
     clk_inverted=true;\n\
     sync_bit_mask=0x10;   # which bit is sync\n\
     inv_bits=0x00;        # will be xored with input data\n\

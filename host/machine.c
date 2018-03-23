@@ -148,14 +148,14 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
         }
     }
 
-    config_setting_lookup_int(machine, "framebuffer_width", &mac->fb_width);
-    mac->sb_width = 1120;
+    config_setting_lookup_int(machine, "frame_width", &mac->frame_width);
     config_setting_lookup_int(machine, "h_counter_shift", &mac->h_counter_shift);
 
-    config_setting_lookup_int(machine, "framebuffer_height", &mac->fb_height);
-    mac->sb_height = 864;
+    config_setting_lookup_int(machine, "frame_height", &mac->frame_height);
     config_setting_lookup_int(machine, "v_counter_shift", &mac->v_counter_shift);
 
+    config_setting_lookup_int(machine, "fullscreen_width", &mac->fullscreen_width);
+    config_setting_lookup_int(machine, "fullscreen_height", &mac->fullscreen_height);
     return err;
 }
 
@@ -175,8 +175,8 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     uint8_t err = 0;
 
     mac = malloc(sizeof (machine_type));
-    mac->fb_width  = 640; //default value
-    mac->fb_height = 480; //default value
+    mac->frame_width  = 640; //default value
+    mac->frame_height = 480; //default value
     mac->h_counter_shift = 0;
     mac->v_counter_shift = 0;
     mac->clk_inverted = mac->inv_bits = 0;

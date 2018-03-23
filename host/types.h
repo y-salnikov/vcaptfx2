@@ -11,12 +11,12 @@ typedef struct {
 } mach_colors;
 
 typedef struct machine_struct {
-    int fb_width;
-    int fb_height;
-    int sb_width;
-    int sb_height;
+    int frame_width;
+    int frame_height;
     int h_counter_shift;
     int v_counter_shift;
+    int fullscreen_width;
+    int fullscreen_height;
     uint8_t color_mode;
     char* name;
     int clk_inverted;
@@ -36,7 +36,6 @@ typedef struct process_context_struct {
     px* framebuf;
     px* framebuf_position;
     int cur_line;
-    int cur_line_index;
     int cur_px;
     machine_type* machine_context;
 } process_context_type;
@@ -44,10 +43,12 @@ typedef struct process_context_struct {
 
 typedef struct render_context_struct {
     SDL_Surface* sdl_surface;
-    unsigned int fb_texture;
+    int viewport_width;
+    int viewport_height;
+    void (*render_function)(render_context_type);
+    int is_fullscreen;
     uint8_t no_signal_flag;
     uint8_t no_device_flag;
-    machine_type* machine_context;
     process_context_type* process_context;
 } render_context_type;
 

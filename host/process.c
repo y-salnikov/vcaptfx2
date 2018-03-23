@@ -14,11 +14,11 @@ process_context_type* process_init(machine_type* mac)
     prc->cur_line = mac->v_counter_shift;
     prc->cur_px   = mac->h_counter_shift;
     prc->machine_context = mac;
-    prc->framebuf  = calloc(mac->fb_width * mac->fb_height, sizeof(px));
+    prc->framebuf = calloc(mac->frame_width * mac->frame_height, sizeof(px));
 
     if (prc->framebuf == NULL) {
         fprintf(stderr, "Can't allocate %lu bytes of memory.",
-                (long unsigned int)mac->fb_width * mac->fb_height * sizeof(px));
+                (long unsigned int)mac->frame_width * mac->frame_height * sizeof(px));
         exit(1);
     }
 
@@ -80,7 +80,7 @@ void parse_data(process_context_type* prc, uint8_t* buf, uint32_t length)
     for (i = 0; i < length; i++) {
         uint8_t c = buf[i];
 
-        if (h_detect(mac, c) && (prc->cur_line < mac->fb_height - 1)) {
+        if (h_detect(mac, c) && (prc->cur_line < mac->frame_height - 1)) {
             prc->cur_line++;
             prc->cur_px = prc->machine_context->h_counter_shift;
         }
@@ -100,7 +100,7 @@ void parse_data(process_context_type* prc, uint8_t* buf, uint32_t length)
             framebuf_px->A = 0xFF;
         }
 
-        if (prc->cur_px < mac->fb_width - 1) {
+        if (prc->cur_px < mac->frame_width - 1) {
             prc->cur_px++;
         }
     }
