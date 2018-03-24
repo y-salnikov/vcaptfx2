@@ -15,6 +15,7 @@ process_context_type* process_init(machine_type* mac)
     prc->cur_px   = mac->h_counter_shift;
     prc->machine_context = mac;
     prc->framebuf = calloc(mac->frame_width * mac->frame_height, sizeof(px));
+    prc->framebuf_position = prc->framebuf;
 
     if (prc->framebuf == NULL) {
         fprintf(stderr, "Can't allocate %lu bytes of memory.",
@@ -91,13 +92,21 @@ void parse_data(process_context_type* prc, uint8_t* buf, uint32_t length)
             prc->framebuf_position = prc->framebuf;
         }
 
-        if (prc->cur_line >= 0 && prc->cur_px >= 0)
+        if (prc->cur_line >= 0 && prc->cur_line < mac->frame_height &&
+                prc->cur_px >= 0 && prc->cur_px < mac->frame_width)
         {
-            px* framebuf_px = prc->framebuf_position++;
-            extract_color(mac, c, &framebuf_px->B,
-                                  &framebuf_px->G,
-                                  &framebuf_px->R);
-            framebuf_px->A = 0xFF;
+            // px* framebuf_px = prc->framebuf_position++;
+
+            // extract_color(mac, c, &framebuf_px->B,
+            //                       &framebuf_px->G,
+            //                       &framebuf_px->R);
+            // framebuf_px->A = 0xFF;
+
+            int index = prc->cur_line * mac->frame_width + prc->cur_px;
+            extract_color(mac, c, &prc->framebuf[index].B,
+                                  &prc->framebuf[index].G,
+                                  &prc->framebuf[index].R);
+            prc->framebuf[index].A = 0xFF;
         }
 
         if (prc->cur_px < mac->frame_width - 1) {

@@ -19,7 +19,7 @@ void init_SDL_surface(render_context_type* rc)
 {
     int w, h;
     uint32_t sdl_flags = SDL_HWSURFACE;
-    if (rc->is_fullscreen)
+    if (rc->fullscreen)
     {
         sdl_flags |= SDL_FULLSCREEN;
         w = rc->process_context->machine_context->fullscreen_width;
@@ -49,7 +49,8 @@ render_context_type* render_init(void* machine_context, void* process_context)
     rc->viewport_width  = rc->process_context->machine_context->frame_width  * 2;
     rc->viewport_height = rc->process_context->machine_context->frame_height * 3;
     rc->render_function = update_sdl_surface_2x;
-    rc->is_fullscreen = 0;
+    rc->fullscreen = 0;
+    rc->interlaced = 1;
 
     if (SDL_Init (SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
         printf ("Unable to init SDL: %s\n", SDL_GetError ());
@@ -95,6 +96,7 @@ void update_sdl_surface_2x(render_context_type* rc)
 {
     int frame_width  = rc->process_context->machine_context->frame_width;
     int frame_height = rc->process_context->machine_context->frame_height;
+    int viewport_pitch = rc->viewport_width * sizeof(px);
 
     px* framebuf = rc->process_context->framebuf;
     px* viewport = rc->sdl_surface->pixels;
@@ -111,13 +113,18 @@ void update_sdl_surface_2x(render_context_type* rc)
         px* vp_line0_start = viewport + y * 3 * rc->sdl_surface->w;
         px* vp_line0 = vp_line0_start;
         px* vp_line1 = vp_line0 + rc->sdl_surface->w;
+        px* vp_line2 = vp_line1 + rc->sdl_surface->w;
         for (x = 0; x < frame_width; x++)
         {
             current_pixel = *(framebuf++);
             *(vp_line0++) = current_pixel;
             *(vp_line0++) = current_pixel;
         }
-        memcpy((void*)vp_line1, (void*)vp_line0_start, rc->viewport_width * sizeof(px));
+        memcpy((void*)vp_line1, (void*)vp_line0_start, viewport_pitch);
+        // memset((void*)vp_line2, 0, viewport_pitch);
+
+        if (!rc->interlaced)
+            memcpy((void*)vp_line2, (void*)vp_line0_start, viewport_pitch);
     }
     //SDL_UnlockSurface(rc->sdl_surface);
 }
@@ -153,6 +160,7 @@ void update_sdl_surface_74x(render_context_type* rc)
         px* vp_line0_start = viewport + y * 3 * rc->sdl_surface->w;
         px* vp_line0 = vp_line0_start;
         px* vp_line1 = vp_line0 + rc->sdl_surface->w;
+        px* vp_line2 = vp_line1 + rc->sdl_surface->w;
 
         for (x = 0; x < frame_width / 4; x++)
         {
@@ -170,6 +178,8 @@ void update_sdl_surface_74x(render_context_type* rc)
             *(vp_line0++) = pix4;
         }
         memcpy((void*)vp_line1, (void*)vp_line0_start, rc->viewport_width * sizeof(px));
+        if (!rc->interlaced)
+            memcpy((void*)vp_line2, (void*)vp_line0_start, rc->viewport_width * sizeof(px));
     }
     //SDL_UnlockSurface(rc->sdl_surface);
 }

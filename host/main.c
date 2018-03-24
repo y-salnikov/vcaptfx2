@@ -21,7 +21,8 @@ uint8_t usb_stop = 0;
 static int verbose_flag;
 
 typedef enum EVENTS {EVENT_QUIT, EVENT_RESIZE, ESC_PRESSED, SCL_PRESSED,
-                     ONE_PRESSED, TWO_PRESSED, FULLSCREEN_PRESSED, NOTHING} event_type;
+                     ONE_PRESSED, TWO_PRESSED, FULLSCREEN_PRESSED,
+                     INTERLACED_PRESSED, NOTHING} event_type;
 
 event_type read_events(render_context_type* rc)
 {
@@ -51,6 +52,10 @@ event_type read_events(render_context_type* rc)
 
             if (event.key.keysym.sym == SDLK_f) {
                 return FULLSCREEN_PRESSED;
+            }
+
+            if (event.key.keysym.sym == SDLK_i) {
+                return INTERLACED_PRESSED;
             }
         }
 
@@ -220,8 +225,13 @@ int main(int argc, char** argv)
         }
 
         if (ev == FULLSCREEN_PRESSED) {
-            rc->is_fullscreen = 1 - rc->is_fullscreen;
+            rc->fullscreen = 1 - rc->fullscreen;
             init_SDL_surface(rc);
+        }
+
+        if (ev == INTERLACED_PRESSED) {
+            rc->interlaced = 1 - rc->interlaced;
+            SDL_FillRect(rc->sdl_surface, NULL, 0);
         }
 
         if (usb_get_thread_state(utc) == 3) {

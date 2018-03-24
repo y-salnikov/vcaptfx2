@@ -46,7 +46,8 @@ typedef struct render_context_struct {
     int viewport_width;
     int viewport_height;
     void (*render_function)(render_context_type);
-    int is_fullscreen;
+    int fullscreen;
+    int interlaced;
     uint8_t no_signal_flag;
     uint8_t no_device_flag;
     process_context_type* process_context;

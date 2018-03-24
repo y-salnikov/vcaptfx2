@@ -11,8 +11,8 @@ common:
     frame_height=288;
     h_counter_shift=-73;
     v_counter_shift=-17;
-    fullscreen_width=1920;
-    fullscreen_height=1080;
+    fullscreen_width=1400;
+    fullscreen_height=1050;
     clk_inverted=true;
     sync_bit_mask=0x80;   # which bit is sync
     inv_bits=0x00;        # will be xored with input data
