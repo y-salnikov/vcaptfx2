@@ -117,8 +117,15 @@ void update_sdl_surface_2x(render_context_type* rc)
         for (x = 0; x < frame_width; x++)
         {
             current_pixel = *(framebuf++);
+            px half_pixel;
+            half_pixel.R = current_pixel.R / 2;
+            half_pixel.G = current_pixel.G / 2;
+            half_pixel.B = current_pixel.B / 2;
+
             *(vp_line0++) = current_pixel;
             *(vp_line0++) = current_pixel;
+            *(vp_line2++) = half_pixel;
+            *(vp_line2++) = half_pixel;
         }
         memcpy((void*)vp_line1, (void*)vp_line0_start, viewport_pitch);
         // memset((void*)vp_line2, 0, viewport_pitch);

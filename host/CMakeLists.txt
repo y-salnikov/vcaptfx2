@@ -5,6 +5,7 @@ set (Vcaptfx2_VERSION_MAJOR 1)
 set (Vcaptfx2_VERSION_MINOR 0.4)
 set (TARGET vcaptfx2)
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -pipe -Wall -std=c99")
+# -Wall
 #set_directory_properties(PROPERTY ADDITIONAL_MAKE_CLEAN_FILES vcapt_hex.c)
 
 IF(MINGW)

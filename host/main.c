@@ -20,9 +20,9 @@ extern const char* vcapt_firmware[];
 uint8_t usb_stop = 0;
 static int verbose_flag;
 
-typedef enum EVENTS {EVENT_QUIT, EVENT_RESIZE, ESC_PRESSED, SCL_PRESSED,
-                     ONE_PRESSED, TWO_PRESSED, FULLSCREEN_PRESSED,
-                     INTERLACED_PRESSED, NOTHING} event_type;
+typedef enum EVENTS {EVENT_QUIT, EVENT_RESIZE, ESC_PRESSED,
+                     ONE_PRESSED, TWO_PRESSED, Q_PRESSED, W_PRESSED, S_PRESSED, E_PRESSED, D_PRESSED,
+                     FULLSCREEN_PRESSED, INTERLACED_PRESSED, NOTHING} event_type;
 
 event_type read_events(render_context_type* rc)
 {
@@ -34,29 +34,18 @@ event_type read_events(render_context_type* rc)
         }
 
         if (event.type == SDL_KEYDOWN) {
-            if (event.key.keysym.sym == SDLK_ESCAPE) {
-                return ESC_PRESSED;
-            }
+            if (event.key.keysym.sym == SDLK_ESCAPE) { return ESC_PRESSED; }
 
-            if (event.key.keysym.sym == SDLK_SCROLLOCK) {
-                return SCL_PRESSED;
-            }
+            if (event.key.keysym.sym == SDLK_1) { return ONE_PRESSED; }
+            if (event.key.keysym.sym == SDLK_2) { return TWO_PRESSED; }
+            if (event.key.keysym.sym == SDLK_q) { return Q_PRESSED; }
+            if (event.key.keysym.sym == SDLK_w) { return W_PRESSED; }
+            if (event.key.keysym.sym == SDLK_s) { return S_PRESSED; }
+            if (event.key.keysym.sym == SDLK_e) { return E_PRESSED; }
+            if (event.key.keysym.sym == SDLK_d) { return D_PRESSED; }
 
-            if (event.key.keysym.sym == SDLK_1) {
-                return ONE_PRESSED;
-            }
-
-            if (event.key.keysym.sym == SDLK_2) {
-                return TWO_PRESSED;
-            }
-
-            if (event.key.keysym.sym == SDLK_f) {
-                return FULLSCREEN_PRESSED;
-            }
-
-            if (event.key.keysym.sym == SDLK_i) {
-                return INTERLACED_PRESSED;
-            }
+            if (event.key.keysym.sym == SDLK_f) { return FULLSCREEN_PRESSED; }
+            if (event.key.keysym.sym == SDLK_i) { return INTERLACED_PRESSED; }
         }
 
         if (event.type == SDL_VIDEORESIZE) {
@@ -201,15 +190,6 @@ int main(int argc, char** argv)
             stop = 1;
         }
 
-        if (ev == SCL_PRESSED && scr_l_e) {
-            mac->color_mode = 1 - mac->color_mode;
-            scr_l_e = 0;
-        }
-
-        if (ev != SCL_PRESSED) {
-            scr_l_e = 1; // SCROLL_LOCK key release
-        }
-
         if (ev == ONE_PRESSED) {
             rc->viewport_width  = rc->process_context->machine_context->frame_width  * 7 / 4;
             rc->viewport_height = rc->process_context->machine_context->frame_height * 3;
@@ -233,6 +213,21 @@ int main(int argc, char** argv)
             rc->interlaced = 1 - rc->interlaced;
             SDL_FillRect(rc->sdl_surface, NULL, 0);
         }
+
+        if (ev == Q_PRESSED)
+            colors_bw(mac->colors);
+
+        if (ev == W_PRESSED)
+            colors_16(mac->colors, 0);
+
+        if (ev == S_PRESSED)
+            colors_16(mac->colors, 1);
+
+        if (ev == E_PRESSED)
+            colors_128(mac->colors, 0);
+
+        if (ev == D_PRESSED)
+            colors_128(mac->colors, 1);
 
         if (usb_get_thread_state(utc) == 3) {
             rc->no_device_flag = 1;

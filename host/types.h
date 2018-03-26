@@ -5,10 +5,9 @@ typedef struct px {
     uint8_t R, G, B, A;
 } px;
 
-typedef struct {
+typedef struct match_color_struct {
     uint8_t R, G, B;
-    uint8_t BW;
-} mach_colors;
+} match_color;
 
 typedef struct machine_struct {
     int frame_width;
@@ -17,13 +16,12 @@ typedef struct machine_struct {
     int v_counter_shift;
     int fullscreen_width;
     int fullscreen_height;
-    uint8_t color_mode;
     char* name;
     int clk_inverted;
     int inv_bits;
     int sync_bit_mask;
     int pixel_bits_mask;
-    mach_colors colors[256];
+    match_color colors[128];
     int vid;
     int pid;
     int USB_BUF_SIZE;

@@ -13,15 +13,9 @@ void extract_color(machine_type* mac, uint8_t d, uint8_t* R, uint8_t* G, uint8_t
     uint8_t mask;
     mask = (d ^ mac->inv_bits) & mac->pixel_bits_mask;
 
-    if (mac->color_mode) {
-        *R = mac->colors[mask].R;
-        *G = mac->colors[mask].G;
-        *B = mac->colors[mask].B;
-        return;
-    } else {
-        *R = *G = *B = mac->colors[mask].BW;
-        return;
-    }
+    *R = mac->colors[mask].R;
+    *G = mac->colors[mask].G;
+    *B = mac->colors[mask].B;
 }
 
 FILE* open_cfg_file(const char* PATH, const char* FILENAME)
@@ -77,11 +71,9 @@ static unsigned int to_bytes_per_ms(unsigned int samplerate)
     return samplerate / 1000;
 }
 
-int get_macine_config(machine_type* mac, config_setting_t* machine)
+int get_machine_config(machine_type* mac, config_setting_t* machine)
 {
     int err = 0;
-    int m, c, bw;
-    const char* binstr;
     size_t s;
     size_t total_size;
     unsigned int timeout;
@@ -105,58 +97,97 @@ int get_macine_config(machine_type* mac, config_setting_t* machine)
     /* Total buffer size should be able to hold about 500ms of data. */
     mac->N_OF_TRANSFERS = (500 * to_bytes_per_ms(mac->freq)) / mac->USB_BUF_SIZE;
 
-    if (mac->N_OF_TRANSFERS > 32) {
+    if (mac->N_OF_TRANSFERS > 32)
         mac->N_OF_TRANSFERS = 32;
-    }
 
     total_size = mac->USB_BUF_SIZE * mac->N_OF_TRANSFERS;
     timeout = total_size / to_bytes_per_ms(mac->freq);
     mac->usb_timeout = (timeout + timeout / 4); /* Leave a headroom of 25% percent. */
 
-    config_setting_t* colors, *color;
-    colors = config_setting_get_member(machine, "colors");
-
-    if (colors != NULL) {
-        for (int i = 0; i < config_setting_length(colors); i++) {
-            color = config_setting_get_elem(colors, i);
-
-            if (config_setting_lookup_int(color, "mask", &m) != CONFIG_TRUE) {
-                if (config_setting_lookup_string(color, "mask", &binstr) != CONFIG_TRUE) {
-                    err++;
-                    break;
-                }
-
-                m = bin2int(binstr);
-
-                if (m < 0) {
-                    err++;
-                    break;
-                }
-            }
-
-            if (!((config_setting_lookup_int(color, "color", &c)) &&
-                    (config_setting_lookup_int(color, "bw", &bw)))) {
-                err++;
-                break;
-            }
-
-            uint8_t mask = (m & 0xFF);
-            mac->colors[mask].R = ((c & 0xFF0000) >> 16);
-            mac->colors[mask].G = ((c & 0x00FF00) >> 8);
-            mac->colors[mask].B = ((c & 0xFF) );
-            mac->colors[mask].BW = ((bw & 0xFF));
-        }
-    }
-
     config_setting_lookup_int(machine, "frame_width", &mac->frame_width);
-    config_setting_lookup_int(machine, "h_counter_shift", &mac->h_counter_shift);
-
     config_setting_lookup_int(machine, "frame_height", &mac->frame_height);
+
+    config_setting_lookup_int(machine, "h_counter_shift", &mac->h_counter_shift);
     config_setting_lookup_int(machine, "v_counter_shift", &mac->v_counter_shift);
 
     config_setting_lookup_int(machine, "fullscreen_width", &mac->fullscreen_width);
     config_setting_lookup_int(machine, "fullscreen_height", &mac->fullscreen_height);
     return err;
+}
+
+// colors mask  Y   RL   GL   BL   R    G    B
+//           0x40 0x20 0x10 0x08 0x04 0x02 0x01
+int swap_rg(int i)
+{
+    int r, g, gt, c;
+    r = i & 0x04;
+    g = i & 0x02;
+    gt = r >> 1;
+    r  = g << 1;
+    g = gt;
+    c = r + g + (i & 0x79);
+    return c;
+}
+
+void colors_bw(match_color colors[])
+{
+    for(int i = 0; i < 128; i++)
+    {
+        int c = swap_rg(i);
+        colors[i].R = colors[i].G = colors[i].B = (c & 0x07) * 0x24;
+    }
+}
+
+void colors_16(match_color colors[], int grb)
+{
+    match_color color;
+    for(int i = 0; i < 128; i++)
+    {
+        color.R = color.G = color.B = 0;
+
+        if ((i & 0x04) && !(i & 0x40)) { color.R = 0xB0; }
+        if ((i & 0x02) && !(i & 0x40)) { color.G = 0xB0; }
+        if ((i & 0x01) && !(i & 0x40)) { color.B = 0xB0; }
+
+        if ((i & 0x44) == 0x44) { color.R = 0xFF; }
+        if ((i & 0x42) == 0x42) { color.G = 0xFF; }
+        if ((i & 0x41) == 0x41) { color.B = 0xFF; }
+
+        if (grb)
+            colors[swap_rg(i)] = color;
+        else
+            colors[i] = color;
+    }
+}
+
+void colors_128(match_color colors[], int grb)
+{
+    const uint8_t C = 0x80; // 0x80
+    const uint8_t L = 0x2B; // 0x2B;
+    const uint8_t Y = 0x54; // 0x54;
+    match_color color;
+
+    for(int i = 0; i < 128; i++)
+    {
+        color.R = color.G = color.B = 0;
+
+        if (i & 0x04) { color.R += C; }
+        if (i & 0x02) { color.G += C; }
+        if (i & 0x01) { color.B += C; }
+
+        if (i & 0x20) { color.R += L; }
+        if (i & 0x10) { color.G += L; }
+        if (i & 0x08) { color.B += L; }
+
+        if ((i & 0x40) && (i & 0x24)) { color.R += Y; }
+        if ((i & 0x40) && (i & 0x12)) { color.G += Y; }
+        if ((i & 0x40) && (i & 0x09)) { color.B += Y; }
+
+        if (grb)
+            colors[swap_rg(i)] = color;
+        else
+            colors[i] = color;
+    }
 }
 
 machine_type* machine_init(uint8_t command, const char* machine_name, const char* config_file_path)
@@ -175,19 +206,21 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     uint8_t err = 0;
 
     mac = malloc(sizeof (machine_type));
-    mac->frame_width  = 640; //default value
-    mac->frame_height = 480; //default value
-    mac->h_counter_shift = 0;
-    mac->v_counter_shift = 0;
-    mac->clk_inverted = mac->inv_bits = 0;
-    mac->sync_bit_mask = 0x10;
-    mac->pixel_bits_mask = 0x0f;
-    mac->vid = 0x04b4;
+    mac->vid = 0x04B4;
     mac->pid = 0x8613;
+    mac->freq = 12500000;
     // mac->USB_BUF_SIZE = 16384;
     // mac->N_OF_TRANSFERS = 15;
     // mac->usb_timeout = 200;
-    mac->freq = 12000000;
+    mac->frame_width  = 640;
+    mac->frame_height = 288;
+    mac->h_counter_shift = -73;
+    mac->v_counter_shift = -17;
+    mac->clk_inverted = 1;
+    mac->inv_bits = 0x47;
+    mac->sync_bit_mask = 0x80;
+    mac->pixel_bits_mask = 0x7F;
+    colors_16(mac->colors, 0);
 
     if (command & COMMAND_DUMP) {
         return mac;
@@ -298,18 +331,16 @@ machine_type* machine_init(uint8_t command, const char* machine_name, const char
     common = config_lookup(&cfg, "common");
 
     if (common != NULL) {
-        err += get_macine_config(mac, common);
+        err += get_machine_config(mac, common);
     }
 
-    err += get_macine_config(mac, machine);
+    err += get_machine_config(mac, machine);
 
     if (err) {
         fprintf(stderr, "Error in config\n");
         config_destroy(&cfg);
         return NULL;
     }
-
-    mac->color_mode = 1;
 
     return mac;
 }
