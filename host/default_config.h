@@ -6,8 +6,8 @@ common:\n\
 {\n\
     vid=0x04B4; #vid/pid\n\
     pid=0x8613;\n\
-    fullscreen_width=1920;\n\
-    fullscreen_height=1080;\n\
+    fullscreen_width=1280;\n\
+    fullscreen_height=1024;\n\
 }\n\
 \n\
 # individual machine settings override common\n\

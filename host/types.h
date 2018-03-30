@@ -1,8 +1,11 @@
 #include "libusb.h"
 #include "SDL.h"
 
-typedef struct px {
-    uint8_t R, G, B, A;
+typedef union {
+    struct {
+        uint8_t R, G, B, A;
+    } components;
+    uint32_t bits;
 } px;
 
 typedef struct match_color_struct {

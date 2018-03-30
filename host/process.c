@@ -103,10 +103,10 @@ void parse_data(process_context_type* prc, uint8_t* buf, uint32_t length)
             // framebuf_px->A = 0xFF;
 
             int index = prc->cur_line * mac->frame_width + prc->cur_px;
-            extract_color(mac, c, &prc->framebuf[index].B,
-                                  &prc->framebuf[index].G,
-                                  &prc->framebuf[index].R);
-            prc->framebuf[index].A = 0xFF;
+            extract_color(mac, c, &prc->framebuf[index].components.B,
+                                  &prc->framebuf[index].components.G,
+                                  &prc->framebuf[index].components.R);
+            prc->framebuf[index].components.A = 0xFF;
         }
 
         if (prc->cur_px < mac->frame_width - 1) {

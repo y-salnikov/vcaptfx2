@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <getopt.h>
 #include "libusb.h"
 #include "types.h"
+#include "colors.h"
 #include "usb.h"
 #include "compat.h"
 #include "render.h"
@@ -12,8 +14,6 @@
 #include "SDL.h"
 #include "SDL_thread.h"
 #include "machine.h"
-#include <stdlib.h>
-#include <getopt.h>
 #include "Vcaptfx2Config.h"
 
 extern const char* vcapt_firmware[];
@@ -21,7 +21,7 @@ uint8_t usb_stop = 0;
 static int verbose_flag;
 
 typedef enum EVENTS {EVENT_QUIT, EVENT_RESIZE, ESC_PRESSED,
-                     ONE_PRESSED, TWO_PRESSED, Q_PRESSED, W_PRESSED, S_PRESSED, E_PRESSED, D_PRESSED,
+                     ONE_PRESSED, TWO_PRESSED, A_PRESSED, Q_PRESSED, W_PRESSED, S_PRESSED, E_PRESSED, D_PRESSED,
                      FULLSCREEN_PRESSED, INTERLACED_PRESSED, NOTHING} event_type;
 
 event_type read_events(render_context_type* rc)
@@ -39,6 +39,7 @@ event_type read_events(render_context_type* rc)
             if (event.key.keysym.sym == SDLK_1) { return ONE_PRESSED; }
             if (event.key.keysym.sym == SDLK_2) { return TWO_PRESSED; }
             if (event.key.keysym.sym == SDLK_q) { return Q_PRESSED; }
+            if (event.key.keysym.sym == SDLK_a) { return A_PRESSED; }
             if (event.key.keysym.sym == SDLK_w) { return W_PRESSED; }
             if (event.key.keysym.sym == SDLK_s) { return S_PRESSED; }
             if (event.key.keysym.sym == SDLK_e) { return E_PRESSED; }
@@ -76,7 +77,6 @@ void print_help(void)
 int main(int argc, char** argv)
 {
     uint8_t stop = 0;
-    uint8_t scr_l_e = 1;
     event_type ev = NOTHING;
     process_context_type* pcont;
     usb_transfer_context_type* utc;
@@ -183,6 +183,8 @@ int main(int argc, char** argv)
         SLEEP(1); //wait USB thread to start
     }
 
+    int base_color_idx = 0;
+
     while (!stop) {
         ev = read_events(rc);
 
@@ -214,8 +216,14 @@ int main(int argc, char** argv)
             SDL_FillRect(rc->sdl_surface, NULL, 0);
         }
 
-        if (ev == Q_PRESSED)
-            colors_bw(mac->colors);
+        if (ev == Q_PRESSED) {
+            colors_bw(mac->colors, base_color_idx);
+        }
+
+        if (ev == A_PRESSED) {
+            base_color_idx = (base_color_idx + 1) % 4;
+            colors_bw(mac->colors, base_color_idx);
+        }
 
         if (ev == W_PRESSED)
             colors_16(mac->colors, 0);
