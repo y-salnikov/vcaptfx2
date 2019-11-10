@@ -365,6 +365,7 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 	else
 	{
 		utc=xfr->user_data;
+		fatal=0;
 	    switch(xfr->status)
 	    {
 			case LIBUSB_TRANSFER_NO_DEVICE:
@@ -385,7 +386,7 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 				et_count++;
 				if(et_count>=MAX_EMPTY_TRANSFERS)
 		        {
-//					fprintf(stderr,"%d empty transfers\n",MAX_EMPTY_TRANSFERS);
+					fprintf(stderr,"%d empty transfers\n",MAX_EMPTY_TRANSFERS);
 					fatal=1;
 				}
 				else
@@ -406,6 +407,8 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 			    et_count=0;
 			    lngth=xfr->actual_length;
 				memcpy(utc->tmp_buffer,xfr->buffer,lngth);
+				
+				parse_data(utc->process_context,utc->tmp_buffer, lngth);
 				if(libusb_submit_transfer(xfr) < 0)
 					    {
 							// Error
@@ -415,7 +418,6 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 							utc->active_transfers--;
 							err=1;
 					    }
-				parse_data(utc->process_context,utc->tmp_buffer, lngth);
 			}
 		}
 		if (fatal)
@@ -452,7 +454,8 @@ int usb_thread_function(void *utc_ptr)
 	while(utc->usb_stop_flag<2)
 	{
 		usb_poll();
-		SLEEP(1);
+//		SLEEP(1);
+		usleep(20);
 	}
 	return 0;
 }

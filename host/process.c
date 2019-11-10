@@ -6,6 +6,7 @@
 #include "render.h"
 #include "process.h"
 #include "machine.h"
+#include <pthread.h>
 
 
 
@@ -22,7 +23,7 @@ process_context_type* process_init(machine_type *mac)
 		fprintf(stderr,"Can't allocate %lu bytes of memory.",(long unsigned int)mac->fb_size*mac->fb_size*sizeof(px));
 		exit(1);
 	}
-	
+	pthread_mutex_init(&(prc->mutex), NULL);
 	
 	return prc;
 }
@@ -88,11 +89,11 @@ uint8_t h_detect(machine_type *mac, uint8_t c)
 }
 
 
-
 void parse_data(process_context_type *prc, uint8_t *buf, uint32_t length)
 {
 	uint32_t i;
 	uint8_t c;
+	pthread_mutex_lock(&(prc->mutex));
 	for(i=0;i<length;i++)
 	{
 		c=buf[i];
@@ -110,6 +111,7 @@ void parse_data(process_context_type *prc, uint8_t *buf, uint32_t length)
 
 		next_pixel(prc,c);
 	}
+	pthread_mutex_unlock(&(prc->mutex));
 }
 
 

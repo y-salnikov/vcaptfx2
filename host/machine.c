@@ -123,7 +123,6 @@ int get_macine_config(machine_type *mac, config_setting_t *machine)
 
 	/* Total buffer size should be able to hold about 500ms of data. */
 	mac->N_OF_TRANSFERS = (500 * to_bytes_per_ms(mac->freq)) / mac->USB_BUF_SIZE;
-
 	if ( mac->N_OF_TRANSFERS > 32)
 		mac->N_OF_TRANSFERS=32;
 
