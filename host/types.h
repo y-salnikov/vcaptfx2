@@ -41,7 +41,7 @@ typedef struct process_context_struct
 	px *framebuf;
 	uint16_t cur_line;
 	uint16_t cur_px;
-	pthread_mutex_t mutex;
+	SDL_mutex *mutex;
 	machine_type *machine_context;
 	
 } process_context_type;

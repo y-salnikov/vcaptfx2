@@ -2,12 +2,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "SDL.h"
+#include "SDL_thread.h"
 #include "types.h"
 #include "render.h"
 #include "process.h"
 #include "machine.h"
-#include <pthread.h>
-
 
 
 process_context_type* process_init(machine_type *mac)
@@ -23,7 +23,7 @@ process_context_type* process_init(machine_type *mac)
 		fprintf(stderr,"Can't allocate %lu bytes of memory.",(long unsigned int)mac->fb_size*mac->fb_size*sizeof(px));
 		exit(1);
 	}
-	pthread_mutex_init(&(prc->mutex), NULL);
+	prc->mutex=SDL_CreateMutex();
 	
 	return prc;
 }
@@ -93,7 +93,7 @@ void parse_data(process_context_type *prc, uint8_t *buf, uint32_t length)
 {
 	uint32_t i;
 	uint8_t c;
-	pthread_mutex_lock(&(prc->mutex));
+	SDL_LockMutex(prc->mutex);
 	for(i=0;i<length;i++)
 	{
 		c=buf[i];
@@ -111,7 +111,7 @@ void parse_data(process_context_type *prc, uint8_t *buf, uint32_t length)
 
 		next_pixel(prc,c);
 	}
-	pthread_mutex_unlock(&(prc->mutex));
+	SDL_UnlockMutex(prc->mutex);
 }
 
 

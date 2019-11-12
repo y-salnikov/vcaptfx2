@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <libconfig.h>
+#include "SDL.h"
+#include "SDL_opengl.h"
 #include "types.h"
 #include "machine.h"
 #include "compat.h"

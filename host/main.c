@@ -3,14 +3,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "SDL.h"
+#include "SDL_thread.h"
 #include "libusb.h"
 #include "types.h"
 #include "usb.h"
 #include "compat.h"
 #include "render.h"
 #include "process.h"
-#include "SDL.h"
-#include "SDL_thread.h"
 #include "machine.h"
 #include <stdlib.h>
 #include <getopt.h>

@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <string.h>
+#include "SDL.h"
+#include "SDL_thread.h"
 #include "command.h"
 #include "compat.h"
 #include "types.h"
