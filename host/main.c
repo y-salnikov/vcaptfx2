@@ -40,15 +40,18 @@ event_type read_events(render_context_type *rc)
 		    {
 				return ESC_PRESSED;
 		    }
-			if (event.key.keysym.sym == SDLK_SCROLLOCK)
+			if (event.key.keysym.sym == SDLK_SCROLLLOCK)
 			{
 				return SCL_PRESSED;
 			}
 		}
-		if (event.type == SDL_VIDEORESIZE)
+		if (event.type == SDL_WINDOWEVENT )
 		{
-			resizeWindow(rc,event.resize.w,event.resize.h);
-			return EVENT_RESIZE;
+			if(event.window.event == SDL_WINDOWEVENT_RESIZED)
+			{
+				resizeWindow(rc,event.window.data1,event.window.data2);
+				return EVENT_RESIZE;
+			}
 		} 
 
     }
@@ -159,6 +162,7 @@ int main(int argc, char **argv)
     }
 
 	mac=machine_init(command,mach_name,cfg_file);
+	printf("# of transfers=%d\n",mac->N_OF_TRANSFERS);
 	if (mac==NULL) exit(3);
     pcont=process_init(mac);
     utc=usb_init(vcapt_firmware,pcont);
@@ -170,7 +174,7 @@ int main(int argc, char **argv)
 	}
     rc=render_init(mac,pcont);
     
-    SDL_CreateThread(usb_thread_function,utc);
+    SDL_CreateThread(usb_thread_function,"VCAPTFX2 USB thread",utc);
     while(usb_get_thread_state(utc)==2)
     {
 		SLEEP(1);						//wait USB thread to start
@@ -201,7 +205,7 @@ int main(int argc, char **argv)
 					//usb thread stopped
 					rc->no_signal_flag=1;
 					signal_present=0;
-					SDL_CreateThread(usb_thread_function,utc);          //atempting to restart usb_transfer
+					SDL_CreateThread(usb_thread_function,"VCAPTFX2 USB thread",utc);          //atempting to restart usb_transfer
 				}
 				else
 				{

@@ -28,12 +28,12 @@ configure_file (
 include_directories("${PROJECT_BINARY_DIR}")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-find_package(SDL REQUIRED)
-if(NOT SDL_FOUND)
-    message(SEND_ERROR "Failed to find SDL")
+find_package(SDL2 REQUIRED)
+if(NOT SDL2_FOUND)
+    message(SEND_ERROR "Failed to find SDL2")
     return()
 else()
-    include_directories(${SDL_INCLUDE_DIR})
+    include_directories(${SDL2_INCLUDE_DIR})
 endif()
 
 find_package(libusb-1.0 REQUIRED)
@@ -64,7 +64,7 @@ endif()
 # add the executable
 add_executable(${TARGET} ${SOURCE_FILES} )
 
-target_link_libraries(${TARGET} ${SDL_LIBRARY} ${LIBUSB_1_LIBRARIES} ${LIBCONFIG_LIBRARIES} ${OPENGL_LIBRARIES})
+target_link_libraries(${TARGET} ${SDL2_LIBRARY} ${LIBUSB_1_LIBRARIES} ${LIBCONFIG_LIBRARIES} ${OPENGL_LIBRARIES})
 
 
 

@@ -4,6 +4,7 @@
 #include "SDL.h"
 #include "SDL_opengl.h"
 #include <GL/gl.h>
+#include <GL/glu.h>
 #include "types.h"
 #include "render.h"
 #include "compat.h"
@@ -56,7 +57,8 @@ int resizeWindow(render_context_type *rc, int width, int height )
         y0=(height-w_height)/2;
     }
 
-    rc->sdl_surface = SDL_SetVideoMode(width, height, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER );
+    //rc->sdl_surface = SDL_SetVideoMode(width, height, 0, SDL_OPENGL |SDL_RESIZABLE | SDL_GL_DOUBLEBUFFER );
+    SDL_SetWindowSize(rc->sdl_surface, width, height);
     /* Setup our viewport. */
     glViewport( x0, y0, ( GLsizei )w_width, ( GLsizei )w_height );
     
@@ -73,15 +75,15 @@ int resizeWindow(render_context_type *rc, int width, int height )
 void init_opengl(render_context_type *rc)
 {
     SDL_GL_SetAttribute( SDL_GL_STENCIL_SIZE, 8 );
-    if (NULL == (rc->sdl_surface = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 0, SDL_OPENGL |SDL_RESIZABLE  )))
+    if (NULL == (rc->sdl_surface=SDL_CreateWindow("Video Capture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_W, WINDOW_H,  SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN)))
     {
         printf("Can't set OpenGL mode: %s\n", SDL_GetError());
         SDL_Quit();
         exit(1);
-    } 
+    }
+    SDL_GLContext glcontext = SDL_GL_CreateContext(rc->sdl_surface);
     glClearColor(0.0,0.0,0.0,0.0);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
-    SDL_WM_SetCaption("video capture",NULL);
     glViewport(0,0,WINDOW_W,WINDOW_H);
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_LINE_SMOOTH);
@@ -174,7 +176,7 @@ void show_frame(render_context_type *rc)
     glEnd();
       
     glFlush();
-    SDL_GL_SwapBuffers();
+    SDL_GL_SwapWindow(rc->sdl_surface);
 }
 
 int video_output(render_context_type *rc)

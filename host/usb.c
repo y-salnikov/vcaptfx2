@@ -22,7 +22,7 @@
 #include "usb.h"
 #include "profile.h"
 
-#define MAX_EMPTY_TRANSFERS 64
+#define MAX_EMPTY_TRANSFERS 3
 
 
 LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr);
@@ -409,7 +409,6 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 			    et_count=0;
 			    lngth=xfr->actual_length;
 				memcpy(utc->tmp_buffer,xfr->buffer,lngth);
-				
 				parse_data(utc->process_context,utc->tmp_buffer, lngth);
 				if(libusb_submit_transfer(xfr) < 0)
 					    {
@@ -427,6 +426,7 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 			libusb_free_transfer(xfr);
 			free(xfr->buffer);
 			utc->active_transfers--;
+			et_count=0;
 			if(utc->active_transfers==0) utc->usb_stop_flag=1;
 			return;
 		}
@@ -453,7 +453,7 @@ int usb_thread_function(void *utc_ptr)
 	if(utc==NULL) return 0;
 	usb_start_transfer(utc);
 	utc->usb_stop_flag=0;
-	while(utc->usb_stop_flag<2)
+	while(utc->usb_stop_flag<1)
 	{
 		usb_poll();
 //		SLEEP(1);
