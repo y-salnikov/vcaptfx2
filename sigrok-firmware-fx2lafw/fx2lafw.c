@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 /*
@@ -39,6 +38,7 @@
 
 #include <fx2regs.h>
 #include <fx2macros.h>
+#include <fx2ints.h>
 #include <delay.h>
 #include <setupdat.h>
 #include <eputils.h>
@@ -51,15 +51,17 @@
 volatile __bit got_sud;
 BYTE vendor_command;
 
+volatile WORD ledcounter = 0;
+
 static void setup_endpoints(void)
 {
 	/* Setup EP2 (IN). */
-	EP2CFG = (1 << 7) |		  /* EP is valid/activated */
-		 (1 << 6) |		  /* EP direction: IN */
-		 (1 << 5) | (0 << 4) |	  /* EP Type: bulk */
-		 (1 << 3) |		  /* EP buffer size: 1024 */
-		 (0 << 2) |		  /* Reserved. */
-		 (0 << 1) | (0 << 0);	  /* EP buffering: quad buffering */
+	EP2CFG = (1u << 7) |		  /* EP is valid/activated */
+		 (1u << 6) |		  /* EP direction: IN */
+		 (1u << 5) | (0u << 4) |  /* EP Type: bulk */
+		 (1u << 3) |		  /* EP buffer size: 1024 */
+		 (0u << 2) |		  /* Reserved. */
+		 (0u << 1) | (0u << 0);	  /* EP buffering: quad buffering */
 	SYNCDELAY();
 
 	/* Disable all other EPs (EP1, EP4, EP6, and EP8). */
@@ -76,7 +78,7 @@ static void setup_endpoints(void)
 
 	/* EP2: Reset the FIFOs. */
 	/* Note: RESETFIFO() gets the EP number WITHOUT bit 7 set/cleared. */
-	RESETFIFO(0x02)
+	RESETFIFO(0x02);
 
 	/* EP2: Enable AUTOIN mode. Set FIFO width to 8bits. */
 	EP2FIFOCFG = bmAUTOIN;
@@ -102,7 +104,9 @@ static void send_fw_version(void)
 
 	/* Send the message. */
 	EP0BCH = 0;
+	SYNCDELAY();
 	EP0BCL = sizeof(struct version_info);
+	SYNCDELAY();
 }
 
 static void send_revid_version(void)
@@ -115,7 +119,9 @@ static void send_revid_version(void)
 
 	/* Send the message. */
 	EP0BCH = 0;
+	SYNCDELAY();
 	EP0BCL = 1;
+	SYNCDELAY();
 }
 
 BOOL handle_vendorcommand(BYTE cmd)
@@ -123,18 +129,17 @@ BOOL handle_vendorcommand(BYTE cmd)
 	/* Protocol implementation */
 	switch (cmd) {
 	case CMD_START:
+		/* Tell hardware we are ready to receive data. */
 		vendor_command = cmd;
 		EP0BCL = 0;
+		SYNCDELAY();
 		return TRUE;
-		break;
 	case CMD_GET_FW_VERSION:
 		send_fw_version();
 		return TRUE;
-		break;
 	case CMD_GET_REVID_VERSION:
 		send_revid_version();
 		return TRUE;
-		break;
 	}
 
 	return FALSE;
@@ -192,9 +197,36 @@ void sudav_isr(void) __interrupt SUDAV_ISR
 	CLEAR_SUDAV();
 }
 
-void sof_isr(void) __interrupt SOF_ISR __using 1
+/* IN BULK NAK - the host started requesting data. */
+void ibn_isr(void) __interrupt IBN_ISR
 {
-	CLEAR_SOF();
+	/*
+	 * If the IBN interrupt is not disabled, clearing
+	 * does not work. See AN78446, 6.2.
+	 */
+	BYTE ibnsave = IBNIE;
+	IBNIE = 0;
+	CLEAR_USBINT();
+
+	/*
+	 * If the host sent the START command, start the GPIF
+	 * engine. The host will repeat the BULK IN in the next
+	 * microframe.
+	 */
+	if ((IBNIRQ & bmEP2IBN) && (gpif_acquiring == PREPARED)) {
+		ledcounter = 1;
+		LED_OFF();
+		gpif_acquisition_start();
+	}
+
+	/* Clear IBN flags for all EPs. */
+	IBNIRQ = 0xff;
+
+	NAKIRQ = bmIBN;
+	SYNCDELAY();
+
+	IBNIE = ibnsave;
+	SYNCDELAY();
 }
 
 void usbreset_isr(void) __interrupt USBRESET_ISR
@@ -207,6 +239,20 @@ void hispeed_isr(void) __interrupt HISPEED_ISR
 {
 	handle_hispeed(TRUE);
 	CLEAR_HISPEED();
+}
+
+void timer2_isr(void) __interrupt TF2_ISR
+{
+	/* Blink LED during acquisition, keep it on otherwise. */
+	if (gpif_acquiring == RUNNING) {
+		if (--ledcounter == 0) {
+			LED_TOGGLE();
+			ledcounter = 1000;
+		}
+	} else if (gpif_acquiring == STOPPED) {
+		LED_ON();
+	}
+	TF2 = 0;
 }
 
 void fx2lafw_init(void)
@@ -226,9 +272,19 @@ void fx2lafw_init(void)
 
 	/* TODO: Does the order of the following lines matter? */
 	ENABLE_SUDAV();
-	ENABLE_SOF();
+	ENABLE_EP2IBN();
 	ENABLE_HISPEED();
 	ENABLE_USBRESET();
+
+	LED_INIT();
+	LED_ON();
+
+	/* Init timer2. */
+	RCAP2L = -500 & 0xff;
+	RCAP2H = (-500 & 0xff00) >> 8;
+	T2CON = 0;
+	ET2 = 1;
+	TR2 = 1;
 
 	/* Global (8051) interrupt enable. */
 	EA = 1;
@@ -254,7 +310,7 @@ void fx2lafw_poll(void)
 				break;
 
 			if (EP0BCL == sizeof(struct cmd_start_acquisition)) {
-				gpif_acquisition_start(
+				gpif_acquisition_prepare(
 				 (const struct cmd_start_acquisition *)EP0BUF);
 			}
 

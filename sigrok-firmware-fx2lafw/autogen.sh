@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 ##
 ## This file is part of the sigrok-firmware-fx2lafw project.
 ##
@@ -15,32 +15,10 @@
 ## GNU General Public License for more details.
 ##
 ## You should have received a copy of the GNU General Public License
-## along with this program; if not, write to the Free Software
-## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+## along with this program; if not, see <http://www.gnu.org/licenses/>.
 ##
 
-OS=`uname`
+test -n "$srcdir" || srcdir=`dirname "$0"`
+test -n "$srcdir" || srcdir=.
 
-if [ "x$OS" = "xDarwin" ]; then
-	if [ -d /sw/share/aclocal ]; then
-		# fink installs aclocal macros here
-		ACLOCAL_DIR="-I /sw/share/aclocal"
-	elif [ -d /opt/local/share/aclocal ]; then
-		# Macports installs aclocal macros here
-		ACLOCAL_DIR="-I /opt/local/share/aclocal"
-	elif [ -d /usr/local/share/aclocal ]; then
-		# Homebrew installs aclocal macros here
-		ACLOCAL_DIR="-I /usr/local/share/aclocal"
-	elif [ -d /usr/share/aclocal ]; then
-		# Xcode installs aclocal macros here
-		ACLOCAL_DIR="-I /usr/share/aclocal"
-	fi
-fi
-
-echo "Generating build system..."
-mkdir -p autostuff
-aclocal ${ACLOCAL_DIR} || exit 1
-autoheader || exit 1
-automake --add-missing --copy || exit 1
-autoconf || exit 1
-
+autoreconf --force --install --verbose "$srcdir"

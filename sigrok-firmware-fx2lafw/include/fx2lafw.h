@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef FX2LAFW_INCLUDE_FX2LAFW_H
@@ -37,7 +36,14 @@
  * (libsigrok) drivers, i.e. changes where old libsigrok versions would no
  * longer (properly) work with the new fx2lafw firmware.
  */
-#define FX2LAFW_VERSION_MAJOR	0
-#define FX2LAFW_VERSION_MINOR	99
+#define FX2LAFW_VERSION_MAJOR	1
+#define FX2LAFW_VERSION_MINOR	4
+
+#define LED_POLARITY		1 /* 1: active-high, 0: active-low */
+
+#define LED_INIT()		do { PORTACFG = 0; OEA = (1 << 1); } while (0)
+#define LED_ON()		do { PA1 = LED_POLARITY; } while (0)
+#define LED_OFF()		do { PA1 = !LED_POLARITY; } while (0)
+#define LED_TOGGLE()		do { PA1 = !PA1; } while (0)
 
 #endif

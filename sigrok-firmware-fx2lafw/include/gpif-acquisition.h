@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef FX2LAFW_INCLUDE_GPIF_ACQUISITION_H
@@ -24,8 +23,16 @@
 #include <stdbool.h>
 #include <command.h>
 
+enum gpif_status {
+	STOPPED = 0,
+	PREPARED,
+	RUNNING,
+};
+extern enum gpif_status gpif_acquiring;
+
 void gpif_init_la(void);
-bool gpif_acquisition_start(const struct cmd_start_acquisition *cmd);
+bool gpif_acquisition_prepare(const struct cmd_start_acquisition *cmd);
+void gpif_acquisition_start(void);
 void gpif_poll(void);
 
 #endif

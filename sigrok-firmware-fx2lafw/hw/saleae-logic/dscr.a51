@@ -15,11 +15,13 @@
 ;; GNU General Public License for more details.
 ;;
 ;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, write to the Free Software
-;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+;; along with this program; if not, see <http://www.gnu.org/licenses/>.
 ;;
 
 VID = 0x2509	; Manufacturer ID (0x0925)
 PID = 0x8138	; Product ID (0x3881)
 
 .include "dscr.inc"
+string_descriptor_a 3,^"Saleae Logic"
+_dev_strings_end:
+	.dw	0x0000

@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef FX2LAFW_INCLUDE_COMMAND_H
@@ -28,9 +27,11 @@
 #define CMD_START			0xb1
 #define CMD_GET_REVID_VERSION		0xb2
 
+#define CMD_START_FLAGS_CLK_CTL2_POS	4
 #define CMD_START_FLAGS_WIDE_POS	5
 #define CMD_START_FLAGS_CLK_SRC_POS	6
 
+#define CMD_START_FLAGS_CLK_CTL2	(1 << CMD_START_FLAGS_CLK_CTL2_POS)
 #define CMD_START_FLAGS_SAMPLE_8BIT	(0 << CMD_START_FLAGS_WIDE_POS)
 #define CMD_START_FLAGS_SAMPLE_16BIT	(1 << CMD_START_FLAGS_WIDE_POS)
 

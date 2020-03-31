@@ -14,74 +14,64 @@
 ## GNU General Public License for more details.
 ##
 ## You should have received a copy of the GNU General Public License
-## along with this program; if not, write to the Free Software
-## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+## along with this program; if not, see <http://www.gnu.org/licenses/>.
 ##
 
 # We require at least autoconf 2.63 (AC_INIT format changed there).
 AC_PREREQ([2.63])
 
-AC_INIT([sigrok-firmware-fx2lafw], [0.1.2],
+AC_INIT([sigrok-firmware-fx2lafw], [0.1.7],
 	[sigrok-devel@lists.sourceforge.net],
 	[sigrok-firmware-fx2lafw], [http://www.sigrok.org])
-AC_CONFIG_HEADER([config.h])
-AC_CONFIG_MACRO_DIR([autostuff])
 AC_CONFIG_AUX_DIR([autostuff])
 
 # We require at least automake 1.11 (needed for 'silent rules').
-AM_INIT_AUTOMAKE([1.11 -Wall -Werror check-news])
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+AM_INIT_AUTOMAKE([1.11 -Wall -Werror no-define subdir-objects check-news])
+AM_SILENT_RULES([yes])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
 
 # On Fedora, all sdcc tools have an 'sdcc-' prefix in the filename.
 AC_CHECK_PROGS([SDCC], [sdcc sdcc-sdcc])
-if test "x$SDCC" == "x"; then
-	AC_MSG_ERROR([cannot find sdcc.])
-fi
-AC_CHECK_PROGS([SDCCLIB], [sdcclib sdcc-sdcclib])
-if test "x$SDCCLIB" == "x"; then
-	AC_MSG_ERROR([cannot find sdcclib.])
-fi
+AS_IF([test "x$SDCC" = x],
+	[AC_MSG_ERROR([cannot find sdcc.])])
+
+AC_CHECK_PROGS([SDAR], [sdar sdcc-sdar])
+AS_IF([test "x$SDAR" = x],
+	[AC_MSG_ERROR([cannot find sdar.])])
+
+sf_sdcc_version=`$SDCC --version | sed -n 's/.* \([[0-9]][[0-9]]*\.[[0-9]][[0-9]]*\.[[0-9]][[0-9]]*\) .*/\1/p;q' 2>&AS_MESSAGE_LOG_FD`
+AS_VERSION_COMPARE([$sf_sdcc_version], [3.4.0],
+	[AC_MSG_ERROR([At least version 3.4.0 of sdcc is required.])])
+
 AC_CHECK_PROGS([OBJCOPY], [objcopy])
 AC_CHECK_PROGS([MAKEBIN], [makebin sdcc-makebin])
-if test "x$OBJCOPY" == "x" && test "x$MAKEBIN" == "x"; then
-	AC_MSG_ERROR([cannot find objcopy or makebin.])
-fi
+AS_IF([test "x$OBJCOPY$MAKEBIN" = x],
+	[AC_MSG_ERROR([cannot find objcopy or makebin.])])
 
-AM_CONDITIONAL([FOUND_OBJCOPY], [test "x$OBJCOPY" != "x"])
-AM_CONDITIONAL([FOUND_MAKEBIN], [test "x$MAKEBIN" != "x"])
-AM_COND_IF([FOUND_OBJCOPY], [AC_SUBST(FOUND_OBJCOPY, "yes")])
-AM_COND_IF([FOUND_MAKEBIN], [AC_SUBST(FOUND_MAKEBIN, "yes")])
+AM_CONDITIONAL([FOUND_OBJCOPY], [test "x$OBJCOPY" != x])
+AM_CONDITIONAL([FOUND_MAKEBIN], [test "x$MAKEBIN" != x])
 
 # The sdcc 8051 assembler binary has/had different names:
 # Newer sdcc, Debian / Ubuntu: sdas8051
 # Newer sdcc, Fedora: sdcc-sdas8051
 # Older sdcc: asx8051
 AC_CHECK_PROGS([SDAS8051], [sdas8051 sdcc-sdas8051 asx8051])
-if test "x$SDAS8051" == "x"; then
-	AC_MSG_ERROR([cannot find sdas8051.])
-fi
+AS_IF([test "x$SDAS8051" = x],
+	[AC_MSG_ERROR([cannot find sdas8051.])])
 
-AC_SUBST(SDCC_FLAGS, "--code-size 0x1c00 --xram-size 0x0200 --xram-loc 0x1c00 -Wl\"-b DSCR_AREA=0x1e00\" -Wl\"-b INT2JT=0x1f00\"")
-AC_SUBST(FIRMWARE_DIR, "$datadir/sigrok-firmware")
-AC_SUBST(MAKEFLAGS, '--no-print-directory')
-
-AC_CONFIG_FILES([Makefile
-		 include/Makefile
-		 fx2lib/Makefile
-		 fx2lib/include/Makefile
-		 fx2lib/lib/Makefile
-		 fx2lib/lib/interrupts/Makefile
-		 hw/Makefile
-		 hw/braintechnology-usb-lps/Makefile
-		 hw/cwav-usbeeax/Makefile
-		 hw/cwav-usbeedx/Makefile
-		 hw/cwav-usbeesx/Makefile
-		 hw/cypress-fx2/Makefile
-		 hw/saleae-logic/Makefile
-		])
-
+AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 
+cat >&AS_MESSAGE_FD <<_EOF
+
+sigrok-firmware-fx2lafw configuration summary:
+ - Package version................. $PACKAGE_VERSION
+ - Prefix.......................... $prefix
+
+Compile configuration:
+ - C compiler...................... $SDCC
+ - C compiler version.............. $sf_sdcc_version
+
+_EOF

@@ -11,8 +11,7 @@
 // Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public
-// License along with this library; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+// License along with this library; if not, see <http://www.gnu.org/licenses/>.
 
 
 
@@ -115,6 +114,9 @@ extern volatile BYTE INT4JT;
 
 #define ENABLE_GPIFWF() GPIFIE |= 0x02;
 #define CLEAR_GPIFWF() GLEAR_GPIF(); GPIFIRQ = 0x02;
+
+#define ENABLE_IBN() NAKIE |= bmIBN;
+#define ENABLE_EP2IBN() ENABLE_IBN(); IBNIE |= bmEP2IBN;
 
 /**
  * ez-usb has 12 built in ISRs, to get

@@ -15,9 +15,10 @@
 ;; GNU General Public License for more details.
 ;;
 ;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, write to the Free Software
-;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+;; along with this program; if not, see <http://www.gnu.org/licenses/>.
 ;;
+
+.include "common.inc"
 
 .module DEV_DSCR
 
@@ -58,7 +59,7 @@ _dev_dscr:
 	.dw	0x0100			; Product version (0.01)
 	.db	1			; Manufacturer string index
 	.db	2			; Product string index
-	.db	0			; Serial number string index (none)
+	.db	3			; Serial number string index (none)
 	.db	1			; Number of configurations
 dev_dscr_end:
 
@@ -111,7 +112,7 @@ highspd_dscr_end:
 	.db	ENDPOINT_TYPE_BULK	; Endpoint type (bulk)
 	.db	0x00			; Max. packet size, LSB (512 bytes)
 	.db	0x02			; Max. packet size, MSB (512 bytes)
-	.db	0x00			; Polling interval
+	.db	0x00			; Polling interval (ignored for bulk)
 
 highspd_dscr_realend:
 
@@ -151,7 +152,7 @@ fullspd_dscr_end:
 	.db	ENDPOINT_TYPE_BULK	; Endpoint type (bulk)
 	.db	0x40			; Max. packet size, LSB (64 bytes)
 	.db	0x00			; Max. packet size, MSB (64 bytes)
-	.db	0x00			; Polling interval
+	.db	0x00			; Polling interval (ignored for bulk)
 
 fullspd_dscr_realend:
 
@@ -164,68 +165,7 @@ fullspd_dscr_realend:
 _dev_strings:
 
 ; See http://www.usb.org/developers/docs/USB_LANGIDs.pdf for the full list.
-_string0:
-	.db	string0end - _string0
-	.db	DSCR_STRING_TYPE
-	.db	0x09, 0x04		; Language code 0x0409 (English, US)
-string0end:
+string_descriptor_lang 0 0x0409 ; Language code 0x0409 (English, US)
 
-_string1:
-	.db	string1end - _string1
-	.db	DSCR_STRING_TYPE
-	.ascii	'y'
-	.db	0
-	.ascii	'.'
-	.db	0
-	.ascii	's'
-	.db	0
-	.ascii	'a'
-	.db	0
-	.ascii	'l'
-	.db	0
-	.ascii	'n'
-	.db	0
-	.ascii	'i'
-	.db	0
-	.ascii	'k'
-	.db	0
-	.ascii	'o'
-	.db	0
-	.ascii	'v'
-	.db	0
-string1end:
-
-_string2:
-	.db	string2end - _string2
-	.db	DSCR_STRING_TYPE
-	.ascii	'f'
-	.db	0
-	.ascii	'x'
-	.db	0
-	.ascii	'2'
-	.db	0
-	.ascii	'l'
-	.db	0
-	.ascii	'a'
-	.db	0
-	.ascii	'f'
-	.db	0
-	.ascii	'w'
-	.db	0
-	.ascii	'-'
-	.db	0
-	.ascii	'v'
-	.db	0
-	.ascii	'c'
-	.db	0
-	.ascii	'a'
-	.db	0
-	.ascii	'p'
-	.db	0
-	.ascii	't'
-	.db	0
-string2end:
-
-_dev_strings_end:
-	.dw 0x0000
-
+string_descriptor_a 1,^"sigrok"
+string_descriptor_a 2,^"fx2lafw"

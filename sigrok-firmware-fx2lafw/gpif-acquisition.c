@@ -15,8 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <eputils.h>
@@ -27,7 +26,7 @@
 #include <fx2lafw.h>
 #include <gpif-acquisition.h>
 
-__bit gpif_acquiring;
+enum gpif_status gpif_acquiring = STOPPED;
 
 static void gpif_reset_waveforms(void)
 {
@@ -46,10 +45,7 @@ static void gpif_setup_registers(void)
 	/* TODO. Value probably irrelevant, as we don't use RDY* signals? */
 	GPIFREADYCFG = 0;
 
-	/*
-	 * Set TRICTL = 0, thus CTL0-CTL5 are CMOS outputs.
-	 * TODO: Probably irrelevant, as we don't use CTL0-CTL5?
-	 */
+	/* Set TRICTL = 0, thus CTL0-CTL5 are CMOS outputs. */
 	GPIFCTLCFG = 0;
 
 	/* When GPIF is idle, tri-state the data bus. */
@@ -66,7 +62,7 @@ static void gpif_setup_registers(void)
 	 * GPIFWFSELECT: [7:6] = SINGLEWR index, [5:4] = SINGLERD index,
 	 *               [3:2] = FIFOWR index, [1:0] = FIFORD index
 	 */
-	GPIFWFSELECT = (0x3 << 6) | (0x2 << 4) | (0x1 << 2) | (0x0 << 0);
+	GPIFWFSELECT = (0x3u << 6) | (0x2u << 4) | (0x1u << 2) | (0x0u << 0);
 
 	/* Contains RDY* pin values. Read-only according to TRM. */
 	GPIFREADYSTAT = 0;
@@ -129,10 +125,10 @@ void gpif_init_la(void)
 	gpif_init_flowstates();
 
 	/* Reset the status. */
-	gpif_acquiring = FALSE;
+	gpif_acquiring = STOPPED;
 }
 
-static void gpif_make_delay_state(volatile BYTE *pSTATE, uint8_t delay)
+static void gpif_make_delay_state(volatile BYTE *pSTATE, uint8_t delay, uint8_t output)
 {
 	/*
 	 * DELAY
@@ -143,15 +139,14 @@ static void gpif_make_delay_state(volatile BYTE *pSTATE, uint8_t delay)
 	/*
 	 * OPCODE
 	 * SGL=0, GIN=0, INCAD=0, NEXT=0, DATA=0, DP=0
-	 * Collect data in this state.
 	 */
-	pSTATE[8] = 0x00;
+	pSTATE[8] = 0;
 
 	/*
 	 * OUTPUT
-	 * OE[0:3]=0, CTL[0:3]=0
+	 * CTL[0:5]=output
 	 */
-	pSTATE[16] = 0x00;
+	pSTATE[16] = output;
 
 	/*
 	 * LOGIC FUNCTION
@@ -160,14 +155,13 @@ static void gpif_make_delay_state(volatile BYTE *pSTATE, uint8_t delay)
 	pSTATE[24] = 0x00;
 }
 
-static void gpid_make_data_dp_state(volatile BYTE *pSTATE)
+static void gpif_make_data_dp_state(volatile BYTE *pSTATE)
 {
 	/*
 	 * BRANCH
 	 * Branch to IDLE if condition is true, back to S5 otherwise.
-	 * re-execute
 	 */
-	pSTATE[0] = (7 << 3) | (5 << 0) | (1 << 7);
+	pSTATE[0] = (1 << 7) | (7 << 3) | (5 << 0);
 
 	/*
 	 * OPCODE
@@ -177,7 +171,7 @@ static void gpid_make_data_dp_state(volatile BYTE *pSTATE)
 
 	/*
 	 * OUTPUT
-	 * OE[0:3]=0, CTL[0:3]=0
+	 * CTL[0:5]=0
 	 */
 	pSTATE[16] = 0x00;
 
@@ -189,20 +183,19 @@ static void gpid_make_data_dp_state(volatile BYTE *pSTATE)
 	pSTATE[24] = (6 << 3) | (6 << 0);
 }
 
-bool gpif_acquisition_start(const struct cmd_start_acquisition *cmd)
+bool gpif_acquisition_prepare(const struct cmd_start_acquisition *cmd)
 {
-//	int i;
+	int i;
 	volatile BYTE *pSTATE = &GPIF_WAVE_DATA;
 
 	/* Ensure GPIF is idle before reconfiguration. */
 	while (!(GPIFTRIG & 0x80));
 
 	/* Configure the EP2 FIFO. */
-	if (cmd->flags & CMD_START_FLAGS_SAMPLE_16BIT) {
+	if (cmd->flags & CMD_START_FLAGS_SAMPLE_16BIT)
 		EP2FIFOCFG = bmAUTOIN | bmWORDWIDE;
-	} else {
+	else
 		EP2FIFOCFG = bmAUTOIN;
-	}
 	SYNCDELAY();
 
 	/* Set IFCONFIG to the correct clock source. */
@@ -210,15 +203,22 @@ bool gpif_acquisition_start(const struct cmd_start_acquisition *cmd)
 		IFCONFIG = 0x5e;
 	}
 	/* Populate delay states. */
-		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
-		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
-		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
-		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
-		gpif_make_delay_state(pSTATE++, 0);  // 256 tiks delay
+	gpif_make_delay_state(pSTATE++, 0,0xff);  // 256 tiks delay
+	gpif_make_delay_state(pSTATE++, 0,0xff);  // 256 tiks delay
+	gpif_make_delay_state(pSTATE++, 0,0xff);  // 256 tiks delay
+	gpif_make_delay_state(pSTATE++, 0,0xff);  // 256 tiks delay
+	gpif_make_delay_state(pSTATE++, 0,0xff);  // 256 tiks delay
+	/* Populate S1 - the decision point. */
+	gpif_make_data_dp_state(pSTATE++);
 
-	/* Populate S2 - the decision point. */
-	gpid_make_data_dp_state(pSTATE++);
+	/* Update the status. */
+	gpif_acquiring = PREPARED;
 
+	return true;
+}
+
+void gpif_acquisition_start(void)
+{
 	/* Execute the whole GPIF waveform once. */
 	gpif_set_tc16(1);
 
@@ -226,15 +226,13 @@ bool gpif_acquisition_start(const struct cmd_start_acquisition *cmd)
 	gpif_fifo_read(GPIF_EP2);
 
 	/* Update the status. */
-	gpif_acquiring = TRUE;
-
-	return true;
+	gpif_acquiring = RUNNING;
 }
 
 void gpif_poll(void)
 {
 	/* Detect if acquisition has completed. */
-	if (gpif_acquiring && (GPIFTRIG & 0x80)) {
+	if ((gpif_acquiring == RUNNING) && (GPIFTRIG & 0x80)) {
 		/* Activate NAK-ALL to avoid race conditions. */
 		FIFORESET = 0x80;
 		SYNCDELAY();
@@ -255,6 +253,6 @@ void gpif_poll(void)
 		FIFORESET = 0x00;
 		SYNCDELAY();
 
-		gpif_acquiring = FALSE;
+		gpif_acquiring = STOPPED;
 	}
 }
