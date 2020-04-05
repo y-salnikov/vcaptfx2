@@ -409,7 +409,7 @@ LIBUSB_CALL void callbackUSBTransferComplete(struct libusb_transfer *xfr)
 			    et_count=0;
 			    lngth=xfr->actual_length;
 				memcpy(utc->tmp_buffer,xfr->buffer,lngth);
-				parse_data(utc->process_context,utc->tmp_buffer, lngth);
+				parse_data(utc->process_context,xfr->buffer, lngth);
 				if(libusb_submit_transfer(xfr) < 0)
 					    {
 							// Error

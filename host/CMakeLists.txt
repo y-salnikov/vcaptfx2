@@ -14,7 +14,7 @@ ELSE(MINGW)
 ENDIF(MINGW)
 
 
-set(SOURCE_FILES main.c compat.c usb.c process.c render.c machine.c vcapt_hex.c profile.c)
+set(SOURCE_FILES main.c compat.c usb.c process.c render.c machine.c vcapt_hex.c profile.c fifo.c)
 
 # configure a header file to pass some of the CMake settings
 # to the source code
